@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>RISC-V IOMMU 页表 · 学习攻略</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+/* ---------- 侧边栏 ---------- */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+#toc .lvl3 { font-size: 0.78rem; padding-left: 2.4rem; color: var(--ink-mute); }
+
+/* ---------- 内容区 ---------- */
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+/* ---------- hero ---------- */
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub, header.hero .subtitle { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+/* ---------- 卡片 ---------- */
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3, h4 {
+  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
+  scroll-margin-top: 1.5rem;
+}
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+em, i { font-style: italic; }
+
+/* ---------- tag pill ---------- */
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+/* ---------- 代码 ---------- */
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+pre code .kw   { color: #1E3A8A; font-weight: 600; }
+pre code .str  { color: #C04E1A; }
+pre code .num  { color: #9a6a00; }
+pre code .type { color: #5b3fbf; }
+pre code .cmt  { color: #3f6b4f; }
+pre.diagram {
+  background: var(--paper-soft); color: var(--ink);
+  border: 1px solid var(--rule); font-size: 0.82rem; line-height: 1.55;
+}
+.hl-amber  { color: #a86f10; font-weight: 600; }
+.hl-red    { color: #bc3946; font-weight: 600; }
+.hl-green  { color: #1f7a52; font-weight: 600; }
+.hl-accent { color: #1E3A8A; font-weight: 600; }
+
+/* ---------- 表格 ---------- */
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+/* ---------- callout ---------- */
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+/* ---------- analogy ---------- */
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+/* ---------- blockquote ---------- */
+blockquote {
+  margin: 1.2rem 0; padding: 0.8rem 1.3rem;
+  border-left: 3px solid var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2), transparent 95%);
+  border-radius: 0 10px 10px 0; font-style: italic; color: var(--ink-soft);
+}
+blockquote p:last-child { margin-bottom: 0; }
+blockquote .src {
+  display: block; margin-top: 0.6rem;
+  color: var(--ink-mute); font-size: 0.8rem; font-style: normal;
+}
+
+/* ---------- verdict / note（cache_coherency 专用） ---------- */
+.verdict {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  border-radius: 0 10px 10px 0; padding: 1.1rem 1.4rem;
+  margin: 1.4rem 0; font-size: 1.02rem;
+}
+.verdict strong { color: var(--accent); }
+.note {
+  border-left: 4px solid var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 94%);
+  border-radius: 0 10px 10px 0; padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0; color: var(--ink-soft); font-size: 0.92rem;
+}
+
+/* ---------- 分层图 diagram（cache_coherency 专用） ---------- */
+.diagram { margin: 1.2rem 0; }
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.8rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.95rem; color: var(--ink); }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.2rem; }
+.layer.src   { border-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.layer.cache { border-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 95%); }
+.layer.dev   { border-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.layer.blue   { border-color: var(--accent);   background: color-mix(in oklab, var(--accent), transparent 95%); }
+.layer.orange { border-color: var(--accent-2); background: color-mix(in oklab, var(--accent-2), transparent 95%); }
+.layer.amber  { border-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 95%); }
+.layer.m1 { border-color: #E6B3C2; background: #FAEDF2; }
+.layer.m2 { border-color: #E7C0AC; background: #FAF0E8; }
+.layer.m3 { border-color: #B5CFBC; background: #EFF6F1; }
+.layer.m4 { border-color: #B0C6DE; background: #EEF4F9; }
+.layer.m5 { border-color: #C4B8D6; background: #F2EFF7; }
+.layer .name { font-weight: 600; }
+.layer .desc { line-height: 1.55; }
+.flow-h { display: flex; align-items: stretch; gap: 0.5rem; flex-wrap: wrap; }
+.flow-h .layer { flex: 1; min-width: 120px; display: flex; flex-direction: column; justify-content: center; }
+.flow-h .arrow { align-self: center; flex: none; padding: 0 0.1rem; }
+
+.arrow { text-align: center; color: var(--ink-mute); font-size: 0.82rem; padding: 0.4rem 0; }
+.arrow b { color: var(--ink); }
+.split { display: flex; gap: 0.9rem; }
+.split > div { flex: 1; }
+@media (max-width: 640px) { .split { flex-direction: column; } }
+
+.foot {
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+  color: var(--ink-mute); font-size: 0.8rem;
+}
+
+/* ---------- 列表 ---------- */
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+/* ---------- 动画播放器 ---------- */
+.anim { margin: 1.4rem 0; }
+.anim-controls { display: flex; gap: 0.6rem; margin-bottom: 0.9rem; align-items: center; flex-wrap: wrap; }
+.anim-controls button {
+  background: var(--card); color: var(--ink); border: 1px solid var(--rule-strong);
+  padding: 0.45rem 1.1rem; border-radius: 8px; cursor: pointer;
+  font-size: 0.85rem; font-family: inherit; transition: all .15s;
+}
+.anim-controls button:hover { border-color: var(--accent); color: var(--accent); }
+.anim-controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.anim-controls button.primary:hover { background: #162a5e; }
+.anim-controls .hint { color: var(--ink-mute); font-size: 0.8rem; }
+
+.steps { display: flex; flex-direction: column; gap: 0.6rem; }
+.step {
+  background: var(--paper-soft); border: 1px solid var(--rule); border-radius: 12px;
+  padding: 0.9rem 1.1rem; opacity: .55; transform: translateX(-4px);
+  transition: opacity .35s, transform .35s, border-color .35s, box-shadow .35s, background .35s;
+}
+.step.active {
+  opacity: 1; transform: translateX(0);
+  border-color: var(--accent); background: var(--card);
+  box-shadow: 0 0 0 1px rgba(79,70,229,.22), 0 8px 24px rgba(79,70,229,.12);
+}
+.step .step-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+.step .dot {
+  width: 1.45rem; height: 1.45rem; border-radius: 50%;
+  background: var(--rule-strong); color: var(--ink-mute);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; flex: none; transition: all .3s; font-family: var(--font-en);
+}
+.step.active .dot { background: var(--accent); color: #fff; font-weight: 600; }
+.step .step-title { font-size: 0.98rem; color: var(--ink); }
+.step .step-body { font-size: 0.88rem; color: var(--ink-soft); }
+.step .step-body code { color: #a86f10; background: color-mix(in oklab, var(--accent-3), transparent 88%); }
+.step pre { margin: 0.6rem 0 0; font-size: 0.8rem; }
+
+/* ---------- 时序图 ---------- */
+.timeline { margin: 1.2rem 0; }
+.lane { display: flex; align-items: stretch; min-height: 46px; border-bottom: 1px solid var(--rule); }
+.lane .label {
+  width: 110px; flex: none; font-size: 0.78rem; color: var(--ink-mute);
+  padding: 0.8rem 0.7rem; border-right: 1px solid var(--rule);
+  background: var(--paper-soft); display: flex; align-items: center;
+}
+.lane .track { flex: 1; position: relative; }
+.evt {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: var(--card); border: 1px solid var(--rule-strong); border-radius: 8px;
+  padding: 0.3rem 0.7rem; font-size: 0.75rem; color: var(--ink); white-space: nowrap;
+  opacity: .35; transition: opacity .4s, border-color .4s, box-shadow .4s;
+}
+.evt.active { opacity: 1; border-color: var(--accent); box-shadow: 0 0 10px rgba(79,70,229,.25); }
+.evt.amber.active { border-color: var(--accent-3); box-shadow: 0 0 10px rgba(217,154,43,.25); }
+.evt.red.active   { border-color: var(--red); box-shadow: 0 0 10px rgba(214,69,80,.25); }
+.evt.green.active { border-color: var(--green); box-shadow: 0 0 10px rgba(47,158,110,.25); }
+
+footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-top: 3rem; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul><li><a class="lvl1" href="#model">1. 第一站：心智模型</a><ul><li><a class="lvl2" href="#model-c1">1.1 页表的唯一任务：把 IOVA 翻译成物理地址</a><ul></ul></li><li><a class="lvl2" href="#model-c2">1.2 三种地址，先分清楚</a><ul></ul></li><li><a class="lvl2" href="#model-c3">1.3 两级翻译：第一级（VS 级）+ 第二级（G 级）</a><ul></ul></li><li><a class="lvl2" href="#model-c4">1.4 四种配置：哪一级开、哪一级关</a><ul></ul></li></ul></li><li><a class="lvl1" href="#owner">2. 第二站：谁创建哪一级页表</a><ul><li><a class="lvl2" href="#owner-c1">2.1 先破除一个误解：Host OS 和 Hypervisor 是一体的</a><ul></ul></li><li><a class="lvl2" href="#owner-c2">2.2 三层分工</a><ul></ul></li><li><a class="lvl2" href="#owner-c3">2.3 用规范原文的三个设备把场景钉死</a><ul></ul></li></ul></li><li><a class="lvl1" href="#routes">3. 第三站：两条阅读路线总览</a><ul></ul></li><li><a class="lvl1" href="#line1">4. 第四站：线 1 详解 — 第一级页表（DMA 路径）</a><ul><li><a class="lvl2" href="#line1-c1">4.1dma-iommu.c— DMA API 到 IOMMU 的桥（入口）</a><ul></ul></li><li><a class="lvl2" href="#line1-c2">4.2iommu.c— IOMMU core（抽象层）</a><ul></ul></li><li><a class="lvl2" href="#line1-c3">4.3io-pgtable.c— 通用页表 walk（核心）</a><ul></ul></li><li><a class="lvl2" href="#line1-c4">4.4drivers/iommu/riscv/iommu.c— RISC-V 具体实现</a><ul></ul></li></ul></li><li><a class="lvl1" href="#line2">5. 第五站：线 2 详解 — 第二级页表（直通路径）</a><ul><li><a class="lvl2" href="#line2-c1">5.1drivers/vfio/— 把设备「交出去」给 guest</a><ul></ul></li><li><a class="lvl2" href="#line2-c2">5.2arch/riscv/kvm/gstage.c— 第二级页表的真身</a><ul></ul></li><li><a class="lvl2" href="#line2-c3">5.3arch/riscv/kvm/mmu.c— KVM 的 MMU 管理</a><ul></ul></li></ul></li><li><a class="lvl1" href="#cheatsheet">6. 第六站：文件速查表 + 学习顺序</a><ul><li><a class="lvl2" href="#cheatsheet-c1">6.1 全部文件速查</a><ul></ul></li><li><a class="lvl2" href="#cheatsheet-c2">6.2 推荐学习顺序</a><ul></ul></li><li><a class="lvl2" href="#cheatsheet-c3">6.3 三个反复强调的坑</a><ul></ul></li></ul></li></ul></nav></aside><main class="content"><header class="hero">
+<h1>RISC-V IOMMU 页表 · 学习攻略</h1>
+<div class="sub">第一级 / 第二级翻译 · DMA 路径 vs 直通路径 · 两条源码阅读路线</div>
+<div class="meta">
+    源码 <code>drivers/iommu/</code> · <code>drivers/iommu/riscv/</code> · <code>arch/riscv/kvm/</code> · <code>drivers/vfio/</code> ·
+    对照 RISC-V IOMMU Architecture Specification（<code>riscv-iommu zh.md</code>）
+  </div>
+</header><section class="card" id="model">
+<h2><span class="no">1</span>第一站：心智模型 <span class="tag purple">不碰代码</span></h2>
+<p class="ref">先把「页表在 IOMMU 里到底干什么」这件事钉死，后面所有代码都是在实现这个模型。</p>
+<h3 id="model-c1">1.1 页表的唯一任务：把 IOVA 翻译成物理地址</h3>
+<p class="lead">IOMMU 是「给设备用的 MMU」。设备发起 DMA 时，地址线上出现的是 <strong>IOVA（I/O 虚拟地址）</strong>，不是真实物理地址。IOMMU 用<strong>页表</strong>把 IOVA 翻译成真正的物理地址，并检查权限。这个页表和 CPU 的页表一样，是多级结构（Sv39 三级 / Sv48 四级 / Sv57 五级，每级 9 bit 索引）。</p>
+<h3 id="model-c2">1.2 三种地址，先分清楚</h3>
+<table>
+<tr><th>缩写</th><th>全称</th><th>是谁的视角</th><th>举例</th></tr>
+<tr><td><code>VA / IOVA</code></td><td>I/O Virtual Address</td><td>设备发出来的虚拟地址</td><td>驱动给设备编程的缓冲区地址</td></tr>
+<tr><td><code>GPA</code></td><td>Guest Physical Address</td><td>Guest OS 眼里的「物理地址」（其实还是虚拟的）</td><td>guest 驱动认为的物理地址</td></tr>
+<tr><td><code>SPA</code></td><td>Supervisor Physical Address</td><td>真实物理内存地址（host 的）</td><td>内存控制器真正用的地址</td></tr>
+</table>
+<h3 id="model-c3">1.3 两级翻译：第一级（VS 级）+ 第二级（G 级）</h3>
+<p>IOMMU 支持<strong>两阶段</strong>地址转换（规范 <code>zh.md:230-233</code>），刻意和 CPU MMU 用同一套页表格式：</p>
+<div class="diagram">
+<div class="flow-h">
+<div class="layer m1">
+<div class="name">IOVA</div>
+<div class="desc">设备 DMA 地址</div>
+</div>
+<div class="arrow">第一级（VS 级）<br><code>iosatp</code> · Guest OS 建<br>VA → GPA</div>
+<div class="layer m2">
+<div class="name">GPA</div>
+</div>
+<div class="arrow">第二级（G 级）<br><code>iohgatp</code> · Hypervisor 建<br>GPA → SPA</div>
+<div class="layer m3">
+<div class="name">SPA</div>
+<div class="desc">真实物理地址</div>
+</div>
+</div>
+</div>
+<p>两级各有一个「主人」：第一级（VS 级）由 <strong>Guest OS</strong> 用 <code>iosatp</code> 控制；第二级（G 级）由 <strong>Hypervisor</strong> 用 <code>iohgatp</code> 控制。名字直接对应 CPU 侧：<code>vsatp → iosatp</code>、<code>hgatp → iohgatp</code>，只加了个 <code>io</code> 前缀。</p>
+<h3 id="model-c4">1.4 四种配置：哪一级开、哪一级关</h3>
+<p>规范 <code>zh.md:237-250</code> 用「某一级是不是 Bare（关闭）」分出四种情况，这是理解一切的钥匙：</p>
+<table>
+<tr><th>第一级（VS）</th><th>第二级（G）</th><th>IOVA 被当作</th><th>翻译链</th><th>对应场景</th></tr>
+<tr><td>Bare</td><td>Bare</td><td>SPA</td><td>不翻译</td><td>设备直连物理地址</td></tr>
+<tr><td>Bare</td><td>启用</td><td>GPA</td><td>GPA → SPA</td><td>直通，guest 不自己限制</td></tr>
+<tr><td><strong>启用</strong></td><td>Bare</td><td>VA</td><td><strong>VA → SPA</strong></td><td>host 自用 / 非虚拟化</td></tr>
+<tr><td>启用</td><td>启用</td><td>VA</td><td>VA → GPA → SPA</td><td>直通，guest 自己也限制</td></tr>
+</table>
+<div class="callout red">
+<div class="title">最容易踩的坑：判断「哪一级」看输入，不看输出</div>
+<p class="lead" style="margin:0">「翻译结果是不是物理地址」不能用来判断是第几级。要看<strong>输入</strong>：收 <code>VA</code> 的是第一级（VS 级），收 <code>GPA</code> 的才是第二级（G 级）。所以「VA → SPA」是<strong>第一级在第二级 Bare 时的单级行为</strong>（类似 CPU 非虚拟化的 satp 单级翻译），不是 G 级干的活——G 级从来不碰 VA，它只收 GPA。</p>
+</div>
+</section><section class="card" id="owner">
+<h2><span class="no">2</span>第二站：谁创建哪一级页表 <span class="tag amber">责任分工</span></h2>
+<p class="ref">页表不是凭空出现的，每级都有明确的「作者」。搞清楚作者，才知道去哪个目录找代码。</p>
+<h3 id="owner-c1">2.1 先破除一个误解：Host OS 和 Hypervisor 是一体的</h3>
+<p>在 Linux/KVM 架构下，<strong>KVM（Hypervisor）就是 Linux 内核里的一个模块</strong>，不是独立于 Host OS 之外的程序。所以「Hypervisor 创建第二级页表」这句话，翻译成实现就是 <strong>「Host OS 内核里的 KVM 模块创建第二级页表」</strong>。Host OS 不是「没活干」，它恰恰是建第二级页表的人，还是整个 IOMMU 硬件的「主人」。</p>
+<h3 id="owner-c2">2.2 三层分工</h3>
+<table>
+<tr><th>角色</th><th>创建/管理什么</th><th>对应代码</th></tr>
+<tr><td><strong>Host OS</strong>（内核，含 KVM）</td><td>① IOMMU 一切数据结构：DDT、DC、MSI 页表<br/>② host 自己设备的第一级页表<br/>③ 通过 KVM 建 guest 直通设备的第二级页表</td><td><code>drivers/iommu/</code> + <code>arch/riscv/kvm/</code></td></tr>
+<tr><td><strong>Hypervisor（KVM）</strong></td><td>guest 直通设备的第二级页表（G 级）</td><td><code>arch/riscv/kvm/gstage.c</code></td></tr>
+<tr><td><strong>Guest OS</strong></td><td>只建「它自己直通设备」的第一级页表，且是 hypervisor 授权它建的</td><td>guest 内核里（host 侧不建）</td></tr>
+</table>
+<h3 id="owner-c3">2.3 用规范原文的三个设备把场景钉死</h3>
+<p>规范 <code>zh.md:505-518</code> 用 D1/D2/D3 三个设备讲清「谁用设备 → 哪级启用」：</p>
+<table>
+<tr><th>设备</th><th>谁在用</th><th>第一级</th><th>第二级</th><th>说明</th></tr>
+<tr><td><code>D3</code></td><td>host / Hypervisor 自用</td><td>启用</td><td><strong>Bare</strong></td><td>非虚拟化，第一级就够（zh.md:517-518）</td></tr>
+<tr><td><code>D2</code></td><td>直通给 VM</td><td>Bare</td><td><strong>启用</strong></td><td>直通，guest 不自己限制（zh.md:516）</td></tr>
+<tr><td><code>D1</code></td><td>直通给 VM</td><td>启用</td><td><strong>启用</strong></td><td>直通，guest 也限制（zh.md:513-515）</td></tr>
+</table>
+<p class="lead">规律很干净：<strong>只要设备被直通给 VM，第二级就必然启用（D1/D2）；只要设备 host 自用，第二级就 Bare（D3）。</strong>所以「第二级启不启用」=「直通 vs 软件虚拟化」的分水岭。</p>
+<div class="analogy">
+<div class="lbl">类比：房东 / 物业 / 租客</div>
+<p style="margin:6px 0 0"><strong>Host OS = 房东</strong>（拥有整栋楼 + 一切门锁）；<strong>KVM = 房东兼任的物业</strong>（就是房东的内核模块）；<strong>Guest OS = 租客</strong>。</p>
+<p style="margin:6px 0 0">第二级页表 = 房东/物业登记的「楼宇真实房号表」（房东建）；第一级页表 = 租客在自己房间里贴的「房间内部布局图」（租客建，但房间是房东的，布局图也是房东允许你贴的）。</p>
+</div>
+</section><section class="card" id="routes">
+<h2><span class="no">3</span>第三站：两条阅读路线总览 <span class="tag green">地图</span></h2>
+<p class="ref">学「页表创建」分两条线。这一站先把地图摊开，后面两站逐条走。</p>
+<div class="diagram">
+<div class="layer m1" style="text-align:left">
+<div class="name">线 1：第一级页表（host 自用，DMA 路径）</div>
+<div class="desc"><code>dma-iommu.c</code>（DMA API 入口）→ <code>iommu.c</code>（IOMMU core）→ <code>io-pgtable.c</code>（通用页表 walk）→ <code>drivers/iommu/riscv/iommu.c</code>（RISC-V 具体实现）</div>
+<div class="desc"><span class="tag green">不碰 KVM，不碰虚拟化</span></div>
+</div>
+<div class="layer m2" style="text-align:left">
+<div class="name">线 2：第二级页表（guest 直通，G 级）</div>
+<div class="desc"><code>drivers/vfio/</code>（设备 bind 到 guest domain）→ <code>iommu.c</code>（domain attach）→ <code>arch/riscv/kvm/gstage.c + mmu.c</code>（第二级页表 G-stage + KVM MMU）</div>
+<div class="desc"><span class="tag amber">需要 KVM + VFIO</span></div>
+</div>
+</div>
+<table>
+<tr><th></th><th>线 1（第一级）</th><th>线 2（第二级）</th></tr>
+<tr><td>翻译什么</td><td>VA / IOVA → SPA</td><td>GPA → SPA</td></tr>
+<tr><td>谁建的</td><td>Host OS（DMA 路径）</td><td>KVM（guest 直通）</td></tr>
+<tr><td>要不要学 KVM</td><td><strong>不要</strong></td><td><strong>要</strong></td></tr>
+<tr><td>要不要学 VFIO</td><td>不要</td><td>要</td></tr>
+<tr><td>前置知识</td><td>无（纯 IOMMU/DMA）</td><td>线 1 的页表 walk 机制</td></tr>
+</table>
+<div class="callout green">
+<div class="title">建议顺序：先线 1，再线 2</div>
+<p class="lead" style="margin:0">线 1 是「一个物理设备 + 一份页表」的最干净场景，先把页表 walk 机制吃透（PTE 怎么分配、几级页表、怎么失效）。线 2 的 <code>gstage.c</code> 用的是<strong>同一套页表格式</strong>（Sv39/Sv48，只是 <code>hgatp</code> 指向），学完线 1 再看会快很多——线 2 新增的主要是「KVM 怎么把 guest 的 GPA 空间和 IOMMU domain 绑起来」这层胶水。</p>
+</div>
+</section><section class="card" id="line1">
+<h2><span class="no">4</span>第四站：线 1 详解 — 第一级页表（DMA 路径）<span class="tag green">不碰 KVM</span></h2>
+<p class="ref">这条线回答：host 自己的设备，DMA 用的页表是谁建的、怎么建、怎么 walk。</p>
+<h3 id="line1-c1">4.1 <code>dma-iommu.c</code> — DMA API 到 IOMMU 的桥（入口）</h3>
+<p>设备驱动申请 DMA 缓冲区时，最终会进到这里。关键入口：</p>
+<ul>
+<li><code>iommu_dma_alloc_iova()</code>（<code>dma-iommu.c:760</code>）— 从 IOVA 空间分一段连续地址。</li>
+<li><code>iommu_dma_alloc_pages()</code>（<code>dma-iommu.c:1621</code>）— 分物理页 + 建立「IOVA → 物理页」映射。</li>
+</ul>
+<p class="lead"><strong>抓什么</strong>：看懂「驱动要一段 DMA 内存」是怎么变成「一段 IOVA + 一份页表映射」的。这是第一级页表创建的<strong>触发源头</strong>。</p>
+<h3 id="line1-c2">4.2 <code>iommu.c</code> — IOMMU core（抽象层）</h3>
+<p>不关心具体硬件，只提供统一接口：<code>domain</code>（一组页表）、<code>attach_dev</code>（把设备绑到 domain）、<code>map / unmap</code>（建/拆映射）。</p>
+<p class="lead"><strong>抓什么</strong>：理解 <strong>domain 这个核心概念</strong>——它是一份页表 + 一个编号，可被多个设备共享。所有「建页表」的操作最终都落到某个 domain 上。</p>
+<h3 id="line1-c3">4.3 <code>io-pgtable.c</code> — 通用页表 walk（核心）</h3>
+<p>这是「页表创建」的<strong>真身</strong>。它提供一套与具体硬件无关的页表操作：</p>
+<ul>
+<li><code>alloc_io_pgtable_ops()</code>（<code>io-pgtable.c:53</code>）— 按页表格式（如 RISC-V 的 Sv39/Sv48）分配一套操作。</li>
+<li><code>struct io_pgtable_ops</code> — 里面是 <code>map / unmap / iova_to_phys</code> 等函数指针。</li>
+</ul>
+<p class="lead"><strong>抓什么</strong>：这是<strong>最重要的一个文件</strong>。看懂 PTE 怎么分配、多级页表怎么逐级下钻（walk）、叶子 PTE 怎么填物理页号、失效时怎么清。RISC-V 驱动<strong>不手写页表</strong>，复用的就是这套通用库。</p>
+<h3 id="line1-c4">4.4 <code>drivers/iommu/riscv/iommu.c</code> — RISC-V 具体实现</h3>
+<p>把通用层接到 RISC-V 硬件上。关键符号：</p>
+<ul>
+<li><code>riscv_iommu_ops</code>（<code>riscv/iommu.c:1506</code>）— 驱动的总 ops 表。</li>
+<li><code>.domain_alloc_paging = riscv_iommu_alloc_paging_domain</code>（<code>:1511</code>）— 建 paging domain 时，决定用 Sv39/Sv48。</li>
+<li><code>.attach_dev = riscv_iommu_attach_paging_domain</code>（<code>:1337</code>）— 把设备挂到 domain，写 DC。</li>
+<li><code>.iotlb_sync = riscv_iommu_iotlb_sync</code>（<code>:1339</code>）— 失效 IOTLB。</li>
+</ul>
+<p class="lead"><strong>抓什么</strong>：看懂「通用页表 + RISC-V 寄存器」怎么合体——domain 建好后，驱动把页表根写进 DC 的 <code>fsc</code>（第一级页表指针，对应 <code>iosatp</code>），再写 <code>tc.V</code> 使能翻译。这是「页表真正生效」的那一步。</p>
+<div class="callout green">
+<div class="title">线 1 的阅读顺序</div>
+<p class="lead" style="margin:0"><code>dma-iommu.c</code>（入口）→ <code>iommu.c</code>（domain 概念）→ <code>io-pgtable.c</code>（页表 walk，重点）→ <code>riscv/iommu.c</code>（落到寄存器）。这条线走完，你就懂了「host 设备的第一级页表」的完整生命周期。</p>
+</div>
+</section><section class="card" id="line2">
+<h2><span class="no">5</span>第五站：线 2 详解 — 第二级页表（直通路径）<span class="tag amber">需要 KVM + VFIO</span></h2>
+<p class="ref">这条线回答：设备直通给 guest 时，第二级页表（G 级，GPA→SPA）是谁建的、怎么和 guest 地址空间绑起来。</p>
+<h3 id="line2-c1">5.1 <code>drivers/vfio/</code> — 把设备「交出去」给 guest</h3>
+<p>VFIO 是「设备直通给用户态 / VM」的框架。它负责把设备从 host 驱动手里接管，绑到一个 IOMMU domain 上。关键文件：</p>
+<ul>
+<li><code>vfio_main.c</code> — VFIO 核心，设备生命周期。</li>
+<li><code>iommufd.c</code> / <code>vfio_iommu_type1.c</code> — 两种 IOMMU 后端，管理「设备 → domain → 页表」的绑定。</li>
+<li><code>pci/vfio_pci_core.c</code> — PCI 设备直通的核心逻辑。</li>
+<li><code>group.c</code> — IOMMU group（我们之前讲的「隔离最小粒度」）。</li>
+</ul>
+<p class="lead"><strong>抓什么</strong>：看懂「一个物理设备怎么被划进 IOMMU group、怎么绑到某个 domain、domain 的页表怎么对应到 guest 的地址空间」。这层是「胶水」。</p>
+<h3 id="line2-c2">5.2 <code>arch/riscv/kvm/gstage.c</code> — 第二级页表的真身</h3>
+<p>这是<strong>第二级页表（G 级）的实现</strong>。铁证在代码里：它操作的是 <code>gpa_t addr</code>（guest 物理地址）和 <code>HGATP_PAGE_SHIFT</code>（<code>hgatp</code> 就是第二级页表寄存器），函数名直接叫 <code>kvm_riscv_gstage_get_leaf</code>（walk 第二级页表找叶子 PTE）。<strong>gstage = G-stage = G 级 = 第二级。</strong></p>
+<p class="lead"><strong>抓什么</strong>：第二级页表的 walk、PTE 填充（把 guest 的 GPA 映射到 host 的物理页）、以及和 <code>hgatp</code> 的关系。注意它用的页表格式和线 1 的 <code>io-pgtable.c</code> 是<strong>同一套 Sv39/Sv48</strong>，只是 root 由 <code>hgatp</code> 指、输入是 GPA。</p>
+<h3 id="line2-c3">5.3 <code>arch/riscv/kvm/mmu.c</code> — KVM 的 MMU 管理</h3>
+<p>KVM 的地址空间管理：guest 内存、缺页处理、页表失效（配合 <code>tlb.c</code>、<code>vmid.c</code>）。</p>
+<p class="lead"><strong>抓什么</strong>：KVM 怎么维护「guest 的 GPA 空间」，以及它和 IOMMU 第二级页表如何保持映射一致（CPU 的 EPT 和 IOMMU 的第二级，语义上是对齐的）。</p>
+<div class="callout amber">
+<div class="title">线 2 的阅读顺序</div>
+<p class="lead" style="margin:0"><code>vfio_main.c</code> + <code>iommufd.c</code>（设备怎么交出去）→ <code>gstage.c</code>（第二级页表 walk，重点）→ <code>mmu.c</code>（KVM 地址空间管理）。这条线走完，你就懂了「guest 直通设备时，第二级页表从无到有、到被设备 DMA 使用」的全过程。</p>
+</div>
+</section><section class="card" id="cheatsheet">
+<h2><span class="no">6</span>第六站：文件速查表 + 学习顺序 <span class="tag purple">收尾</span></h2>
+<p class="ref">把所有文件摊成一张表，随时回来查。</p>
+<h3 id="cheatsheet-c1">6.1 全部文件速查</h3>
+<table>
+<tr><th>文件</th><th>属于哪条线</th><th>作用</th><th>关键词</th></tr>
+<tr><td><code>drivers/iommu/dma-iommu.c</code></td><td>线 1</td><td>DMA API → IOMMU 的桥，第一级页表触发源</td><td><code>iommu_dma_alloc_iova</code></td></tr>
+<tr><td><code>drivers/iommu/iommu.c</code></td><td>线 1/2</td><td>IOMMU core，domain/attach/map 抽象</td><td><code>domain</code></td></tr>
+<tr><td><code>drivers/iommu/io-pgtable.c</code></td><td>线 1</td><td>通用页表 walk（第一级真身）</td><td><code>alloc_io_pgtable_ops</code></td></tr>
+<tr><td><code>drivers/iommu/riscv/iommu.c</code></td><td>线 1</td><td>RISC-V 驱动，落到寄存器</td><td><code>riscv_iommu_ops</code></td></tr>
+<tr><td><code>drivers/iommu/riscv/iommu-bits.h</code></td><td>线 1</td><td>寄存器/结构体位定义（DC、fsc、iohgatp）</td><td><code>riscv_iommu_dc</code></td></tr>
+<tr><td><code>drivers/vfio/vfio_main.c</code></td><td>线 2</td><td>VFIO 核心，设备直通生命周期</td><td>—</td></tr>
+<tr><td><code>drivers/vfio/iommufd.c</code></td><td>线 2</td><td>新 IOMMU 后端，设备→domain 绑定</td><td>—</td></tr>
+<tr><td><code>drivers/vfio/vfio_iommu_type1.c</code></td><td>线 2</td><td>传统 type1 后端</td><td>—</td></tr>
+<tr><td><code>arch/riscv/kvm/gstage.c</code></td><td>线 2</td><td><strong>第二级页表（G 级）真身</strong></td><td><code>gpa_t</code>、<code>HGATP_PAGE_SHIFT</code></td></tr>
+<tr><td><code>arch/riscv/kvm/mmu.c</code></td><td>线 2</td><td>KVM 地址空间管理</td><td>—</td></tr>
+</table>
+<h3 id="cheatsheet-c2">6.2 推荐学习顺序</h3>
+<ol>
+<li><strong>线 1</strong>：<code>dma-iommu.c</code> → <code>iommu.c</code> → <code>io-pgtable.c</code>（重点）→ <code>riscv/iommu.c</code>。</li>
+<li><strong>线 2</strong>：<code>vfio</code> → <code>gstage.c</code>（重点）→ <code>mmu.c</code>。</li>
+<li>全程对照规范 <code>riscv-iommu zh.md</code> 的第 1 章（两阶段翻译）和 DC/iosatp/iohgatp 字段定义。</li>
+</ol>
+<h3 id="cheatsheet-c3">6.3 三个反复强调的坑</h3>
+<ul>
+<li><strong>判断第几级看输入不看输出</strong>：收 VA 是第一级，收 GPA 才是第二级。</li>
+<li><strong>Host OS 和 KVM 是一体</strong>：「Hypervisor 建第二级」=「Host OS 内核的 KVM 模块建第二级」，Host OS 不是旁观者。</li>
+<li><strong>软件虚拟化场景的真实设备 = D3</strong>：它只有第一级（VA→SPA），第二级 Bare；那层 GPA→SPA 的「隐藏翻译」跑到了 CPU 的 EPT/NPT 里，跟 IOMMU 无关。</li>
+</ul>
+<div class="callout green">
+<div class="title">最后一句</div>
+<p class="lead" style="margin:0">学页表不要一上来啃 KVM。先把 host 自用的第一级页表（<code>dma-iommu → io-pgtable → riscv/iommu</code>）吃透，再带着这套页表知识去看 KVM 的 <code>gstage.c</code>（第二级）——两者是同一套 Sv39/Sv48 格式，只是「谁建、翻译哪段地址」不同。</p>
+</div>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>

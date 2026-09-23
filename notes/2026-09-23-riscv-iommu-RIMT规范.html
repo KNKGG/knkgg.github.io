@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>RISC-V IO Mapping Table (RIMT) 规范 · 中文翻译</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+/* ---------- 侧边栏 ---------- */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+#toc .lvl3 { font-size: 0.78rem; padding-left: 2.4rem; color: var(--ink-mute); }
+
+/* ---------- 内容区 ---------- */
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+/* ---------- hero ---------- */
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub, header.hero .subtitle { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+/* ---------- 卡片 ---------- */
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3, h4 {
+  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
+  scroll-margin-top: 1.5rem;
+}
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+em, i { font-style: italic; }
+
+/* ---------- tag pill ---------- */
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+/* ---------- 代码 ---------- */
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+pre code .kw   { color: #1E3A8A; font-weight: 600; }
+pre code .str  { color: #C04E1A; }
+pre code .num  { color: #9a6a00; }
+pre code .type { color: #5b3fbf; }
+pre code .cmt  { color: #3f6b4f; }
+pre.diagram {
+  background: var(--paper-soft); color: var(--ink);
+  border: 1px solid var(--rule); font-size: 0.82rem; line-height: 1.55;
+}
+.hl-amber  { color: #a86f10; font-weight: 600; }
+.hl-red    { color: #bc3946; font-weight: 600; }
+.hl-green  { color: #1f7a52; font-weight: 600; }
+.hl-accent { color: #1E3A8A; font-weight: 600; }
+
+/* ---------- 表格 ---------- */
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+/* ---------- callout ---------- */
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+/* ---------- analogy ---------- */
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+/* ---------- blockquote ---------- */
+blockquote {
+  margin: 1.2rem 0; padding: 0.8rem 1.3rem;
+  border-left: 3px solid var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2), transparent 95%);
+  border-radius: 0 10px 10px 0; font-style: italic; color: var(--ink-soft);
+}
+blockquote p:last-child { margin-bottom: 0; }
+blockquote .src {
+  display: block; margin-top: 0.6rem;
+  color: var(--ink-mute); font-size: 0.8rem; font-style: normal;
+}
+
+/* ---------- verdict / note（cache_coherency 专用） ---------- */
+.verdict {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  border-radius: 0 10px 10px 0; padding: 1.1rem 1.4rem;
+  margin: 1.4rem 0; font-size: 1.02rem;
+}
+.verdict strong { color: var(--accent); }
+.note {
+  border-left: 4px solid var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 94%);
+  border-radius: 0 10px 10px 0; padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0; color: var(--ink-soft); font-size: 0.92rem;
+}
+
+/* ---------- 分层图 diagram（cache_coherency 专用） ---------- */
+.diagram { margin: 1.2rem 0; }
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.8rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.95rem; color: var(--ink); }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.2rem; }
+.layer.src   { border-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.layer.cache { border-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 95%); }
+.layer.dev   { border-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.arrow { text-align: center; color: var(--ink-mute); font-size: 0.82rem; padding: 0.4rem 0; }
+.arrow b { color: var(--ink); }
+.split { display: flex; gap: 0.9rem; }
+.split > div { flex: 1; }
+@media (max-width: 640px) { .split { flex-direction: column; } }
+
+.foot {
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+  color: var(--ink-mute); font-size: 0.8rem;
+}
+
+/* ---------- 列表 ---------- */
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+/* ---------- 动画播放器 ---------- */
+.anim { margin: 1.4rem 0; }
+.anim-controls { display: flex; gap: 0.6rem; margin-bottom: 0.9rem; align-items: center; flex-wrap: wrap; }
+.anim-controls button {
+  background: var(--card); color: var(--ink); border: 1px solid var(--rule-strong);
+  padding: 0.45rem 1.1rem; border-radius: 8px; cursor: pointer;
+  font-size: 0.85rem; font-family: inherit; transition: all .15s;
+}
+.anim-controls button:hover { border-color: var(--accent); color: var(--accent); }
+.anim-controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.anim-controls button.primary:hover { background: #162a5e; }
+.anim-controls .hint { color: var(--ink-mute); font-size: 0.8rem; }
+
+.steps { display: flex; flex-direction: column; gap: 0.6rem; }
+.step {
+  background: var(--paper-soft); border: 1px solid var(--rule); border-radius: 12px;
+  padding: 0.9rem 1.1rem; opacity: .55; transform: translateX(-4px);
+  transition: opacity .35s, transform .35s, border-color .35s, box-shadow .35s, background .35s;
+}
+.step.active {
+  opacity: 1; transform: translateX(0);
+  border-color: var(--accent); background: var(--card);
+  box-shadow: 0 0 0 1px rgba(79,70,229,.22), 0 8px 24px rgba(79,70,229,.12);
+}
+.step .step-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+.step .dot {
+  width: 1.45rem; height: 1.45rem; border-radius: 50%;
+  background: var(--rule-strong); color: var(--ink-mute);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; flex: none; transition: all .3s; font-family: var(--font-en);
+}
+.step.active .dot { background: var(--accent); color: #fff; font-weight: 600; }
+.step .step-title { font-size: 0.98rem; color: var(--ink); }
+.step .step-body { font-size: 0.88rem; color: var(--ink-soft); }
+.step .step-body code { color: #a86f10; background: color-mix(in oklab, var(--accent-3), transparent 88%); }
+.step pre { margin: 0.6rem 0 0; font-size: 0.8rem; }
+
+/* ---------- 时序图 ---------- */
+.timeline { margin: 1.2rem 0; }
+.lane { display: flex; align-items: stretch; min-height: 46px; border-bottom: 1px solid var(--rule); }
+.lane .label {
+  width: 110px; flex: none; font-size: 0.78rem; color: var(--ink-mute);
+  padding: 0.8rem 0.7rem; border-right: 1px solid var(--rule);
+  background: var(--paper-soft); display: flex; align-items: center;
+}
+.lane .track { flex: 1; position: relative; }
+.evt {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: var(--card); border: 1px solid var(--rule-strong); border-radius: 8px;
+  padding: 0.3rem 0.7rem; font-size: 0.75rem; color: var(--ink); white-space: nowrap;
+  opacity: .35; transition: opacity .4s, border-color .4s, box-shadow .4s;
+}
+.evt.active { opacity: 1; border-color: var(--accent); box-shadow: 0 0 10px rgba(79,70,229,.25); }
+.evt.amber.active { border-color: var(--accent-3); box-shadow: 0 0 10px rgba(217,154,43,.25); }
+.evt.red.active   { border-color: var(--red); box-shadow: 0 0 10px rgba(214,69,80,.25); }
+.evt.green.active { border-color: var(--green); box-shadow: 0 0 10px rgba(47,158,110,.25); }
+
+footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-top: 3rem; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul><li><a class="lvl1" href="#front">1. 前言与版权</a><ul><li><a class="lvl2" href="#front-c1">文档状态</a><ul></ul></li><li><a class="lvl2" href="#front-c2">版权与许可</a><ul></ul></li><li><a class="lvl2" href="#front-c3">贡献者</a><ul></ul></li><li><a class="lvl2" href="#front-c4">变更日志（Changelog）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#terms">2. 术语和缩写</a><ul></ul></li><li><a class="lvl1" href="#ch1">3. 第 1 章 · 引言</a><ul></ul></li><li><a class="lvl1" href="#ch2">4. 第 2 章 · RISC-V IO Mapping Table (RIMT)</a><ul><li><a class="lvl2" href="#ch2-c1">表 1 · RISC-V IO Mapping Table</a><ul></ul></li></ul></li><li><a class="lvl1" href="#nodetypes">5. 2.1 · RIMT 节点结构类型</a><ul><li><a class="lvl2" href="#nodetypes-c1">表 2 · RIMT Node Types（节点类型）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#iommu-node">6. 2.1.1 · IOMMU 节点</a><ul><li><a class="lvl2" href="#iommu-node-c1">表 3 · IOMMU Node</a><ul></ul></li><li><a class="lvl2" href="#iommu-node-c2">表 4 · Interrupt Wire Structure（中断线结构）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#rc-node">7. 2.1.2 · PCIe Root Complex 节点</a><ul><li><a class="lvl2" href="#rc-node-c1">表 5 · PCIe Root Complex Node</a><ul><li><a class="lvl3" href="#idmap-c1">对 PCIe 设备</a></li><li><a class="lvl3" href="#idmap-c2">对平台设备</a></li></ul></li></ul></li><li><a class="lvl1" href="#idmap">8. ID 映射结构</a><ul><li><a class="lvl2" href="#idmap-c3">表 6 · ID Mapping Structure（ID 映射结构）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#plat-node">9. 2.1.3 · Platform Device 节点</a><ul><li><a class="lvl2" href="#plat-node-c1">表 7 · Platform Device Node</a><ul></ul></li></ul></li><li><a class="lvl1" href="#ch3">10. 第 3 章 · ID 映射示例</a><ul><li><a class="lvl2" href="#ch3-c1">表 8 · PCIe 设备 ID 映射示例</a><ul></ul></li><li><a class="lvl2" href="#ch3-c2">表 9 · 平台设备 ID 映射示例</a><ul></ul></li></ul></li><li><a class="lvl1" href="#bib">11. 参考文献</a><ul></ul></li></ul></nav></aside><main class="content"><header class="hero">
+<h1>RISC-V IO Mapping Table (RIMT) 规范 · 中文翻译</h1>
+<div class="sub">RISC-V ACPI 体系中描述「IO 拓扑 ↔ IOMMU」绑定关系的静态表</div>
+<div class="meta">
+    版本 <code>v1.0</code> · 状态 <code>Ratified（已批准，2025-03-31）</code> ·
+    官方仓库 <code>riscv-non-isa/riscv-acpi-rimt</code> · 本页为忠实翻译，字段名保留英文原文
+  </div>
+</header><section class="card" id="front">
+<h2><span class="no">1</span>前言与版权 <span class="tag green">Ratified</span></h2>
+<h3 id="front-c1">文档状态</h3>
+<div class="callout green">
+<div class="title">Ratified（已批准）状态</div>
+<p style="margin:0">本规范处于 <strong>Ratified</strong> 状态，不允许再做任何修改。任何期望的或必要的变更，只能作为后续的新扩展（extension）另行提出。已批准的扩展永不再修订。</p>
+</div>
+<h3 id="front-c2">版权与许可</h3>
+<p>本规范依据 <strong>Creative Commons Attribution 4.0 International License (CC-BY 4.0)</strong> 授权。完整许可文本见 <code>creativecommons.org/licenses/by/4.0/</code>。</p>
+<p>Copyright 2024-2025 by RISC-V International.</p>
+<h3 id="front-c3">贡献者</h3>
+<p class="lead">本 RISC-V 规范由以下人员直接或间接贡献：</p>
+<ul>
+<li>Aaron Durbin &lt;adurbin@rivosinc.com&gt;</li>
+<li>Andrew Jones &lt;ajones@ventanamicro.com&gt;</li>
+<li>Anup Patel &lt;apatel@ventanamicro.com&gt;</li>
+<li>Atish Kumar Patra &lt;atishp@rivosinc.com&gt;</li>
+<li>Heinrich Schuchardt &lt;heinrich.schuchardt@canonical.com&gt;</li>
+<li>Samuel Holland &lt;samuel.holland@sifive.com&gt;</li>
+<li>Sebastien Boeuf &lt;seb@rivosinc.com&gt;</li>
+<li>Sunil V L &lt;sunilvl@ventanamicro.com&gt;</li>
+<li>Tomasz Jeznach &lt;tjeznach@rivosinc.com&gt;</li>
+<li>Ved Shanbhogue &lt;ved@rivosinc.com&gt;</li>
+</ul>
+<h3 id="front-c4">变更日志（Changelog）</h3>
+<ul>
+<li><strong>v1.0</strong>：版本更新，标示「Ratified」状态。</li>
+<li><strong>v0.99</strong>：版本更新，标示「Ratification Ready」状态。</li>
+<li><strong>v0.92</strong>：将版权年份更新为包含 2025。</li>
+<li><strong>v0.91</strong>：处理公开评审反馈；更新版本与贡献者列表；准备 TSC 签字。</li>
+<li><strong>v1.0.0-rc5</strong>：文档状态更新为 Frozen。</li>
+<li><strong>v1.0.0-rc4</strong>：新增「源 ID 重叠限制」的细节说明；处理 RC3 版本的其余 ARC 反馈。</li>
+<li><strong>v1.0.0-rc3</strong>：处理 ARC 评审反馈。</li>
+<li><strong>v1.0.0-rc2</strong>：ARC 评审草案；处理内部评审反馈；采用 IEEE 风格参考文献；允许 Hardware ID 对 PCIe IOMMU 同样有效。</li>
+<li><strong>v1.0.0-rc1</strong>：内部评审草案；新增 ID 映射示例；文档模板改动；处理 PRS TG 反馈。</li>
+<li><strong>v0.0.1</strong>：PRS TG 评审的初始草案。</li>
+</ul>
+</section><section class="card" id="terms">
+<h2><span class="no">2</span>术语和缩写</h2>
+<p class="lead">本规范使用以下术语和缩写：</p>
+<table>
+<tr><th>术语</th><th>含义</th></tr>
+<tr><td class="fld">ACPI</td><td>Advanced Configuration and Power Interface Specification（高级配置与电源接口规范）</td></tr>
+<tr><td class="fld">APLIC</td><td>Advanced Platform-Level Interrupt Controller（高级平台级中断控制器）</td></tr>
+<tr><td class="fld">IOMMU</td><td>Input-Output Memory Management Unit（输入输出内存管理单元）</td></tr>
+<tr><td class="fld">PLIC</td><td>Platform-Level Interrupt Controller（平台级中断控制器）</td></tr>
+<tr><td class="fld">RCiEP</td><td>Root Complex Integrated End Point（根复合体集成端点）</td></tr>
+</table>
+</section><section class="card" id="ch1">
+<h2><span class="no">3</span>第 1 章 · 引言</h2>
+<p>RISC-V IO Mapping Table（RIMT）在基于 ACPI [2] 的 RISC-V 平台上，提供关于 <strong>RISC-V IOMMU [1]</strong> 以及 <strong>IO 拓扑与 IOMMU 之间关系</strong>的信息。RIMT 标识出「哪些组件位于 IOMMU 之后」以及「它们是如何连接在一起的」。</p>
+<p class="lead">RISC-V IOMMU 既可以实现为 <strong>PCIe 设备</strong>，也可以实现为 <strong>平台设备</strong>。</p>
+</section><section class="card" id="ch2">
+<h2><span class="no">4</span>第 2 章 · RISC-V IO Mapping Table (RIMT)</h2>
+<p>表 1 展示了 RIMT 的结构。除基本表头外，RIMT 可包含若干<strong>节点（node）</strong>。每个节点代表一个组件，该组件可以是 <strong>IOMMU</strong>、<strong>PCIe 根复合体（root complex）</strong>或<strong>平台设备</strong>。</p>
+<h3 id="ch2-c1">表 1 · RISC-V IO Mapping Table</h3>
+<table>
+<tr><th>字段</th><th>字节长度</th><th>字节偏移</th><th>描述</th></tr>
+<tr><td class="fld">Signature</td><td class="num">4</td><td class="num">0</td><td>RISC-V IO Mapping Table 的签名 <code>'RIMT'</code>。</td></tr>
+<tr><td class="fld">Length</td><td class="num">4</td><td class="num">4</td><td>整张 RIMT 表的字节长度。</td></tr>
+<tr><td class="fld">Revision</td><td class="num">1</td><td class="num">8</td><td>值为 <code>1</code>。</td></tr>
+<tr><td class="fld">Checksum</td><td class="num">1</td><td class="num">9</td><td>整张表所有字节求和必须为 0。</td></tr>
+<tr><td class="fld">OEMID</td><td class="num">6</td><td class="num">10</td><td>OEM ID。</td></tr>
+<tr><td class="fld">OEM Table ID</td><td class="num">8</td><td class="num">16</td><td>对 RIMT 而言，表 ID 就是制造商型号 ID。</td></tr>
+<tr><td class="fld">OEM Revision</td><td class="num">4</td><td class="num">24</td><td>该 OEM Table ID 对应 RIMT 的 OEM 修订号。</td></tr>
+<tr><td class="fld">Creator ID</td><td class="num">4</td><td class="num">28</td><td>创建该表的工具的厂商 ID。</td></tr>
+<tr><td class="fld">Creator Revision</td><td class="num">4</td><td class="num">32</td><td>创建该表的工具的修订号。</td></tr>
+<tr><td class="fld">Number of RIMT Nodes</td><td class="num">4</td><td class="num">36</td><td>RIMT 节点数组中的节点数量。</td></tr>
+<tr><td class="fld">Offset to RIMT Node Array</td><td class="num">4</td><td class="num">40</td><td>从本表起始到节点数组中第一个节点的偏移。</td></tr>
+<tr><td class="fld">Reserved</td><td class="num">4</td><td class="num">44</td><td>必须为 0。</td></tr>
+<tr><td class="fld">RIMT Node Array</td><td class="num">—</td><td class="num">48</td><td>平台中的 RIMT 节点列表。节点可为表 2 所列类型之一。各节点类型的结构在后续章节定义。</td></tr>
+</table>
+</section><section class="card" id="nodetypes">
+<h2><span class="no">5</span>2.1 · RIMT 节点结构类型</h2>
+<p>RIMT 节点结构大体分为两类：一类是<strong>实际的 IOMMU 节点</strong>结构，另一类是<strong>绑定到 IOMMU 的设备的节点</strong>结构。设备节点结构又可细分为<strong>绑定到 IOMMU 的 PCIe 根复合体</strong>与<strong>平台设备</strong>结构。</p>
+<p class="lead">例如，在一个只有单颗 IOMMU 的系统中，RIMT 应至少包含两个节点：一个描述 IOMMU 本身，另一个描述这颗 IOMMU 之后的设备。表 2 列出了这些结构可能的类型。</p>
+<h3 id="nodetypes-c1">表 2 · RIMT Node Types（节点类型）</h3>
+<table>
+<tr><th>值</th><th>描述</th></tr>
+<tr><td class="num">0</td><td>RISC-V IOMMU 节点。见「IOMMU 节点」。</td></tr>
+<tr><td class="num">1</td><td>PCIe 根复合体节点。见「PCIe RC 节点」。</td></tr>
+<tr><td class="num">2</td><td>平台设备节点。见「平台设备节点」。</td></tr>
+<tr><td class="num">3-255</td><td>保留。</td></tr>
+</table>
+</section><section class="card" id="iommu-node">
+<h2><span class="no">6</span>2.1.1 · IOMMU 节点</h2>
+<p>IOMMU 可实现为平台设备或 PCIe 设备。IOMMU 节点是 RIMT 中用于<strong>上报系统中每颗 IOMMU 的配置与能力</strong>的结构。</p>
+<h3 id="iommu-node-c1">表 3 · IOMMU Node</h3>
+<table>
+<tr><th>字段</th><th>字节长度</th><th>字节偏移</th><th>描述</th></tr>
+<tr><td class="fld">Type</td><td class="num">1</td><td class="num">0</td><td>0 = IOMMU 节点。</td></tr>
+<tr><td class="fld">Revision</td><td class="num">1</td><td class="num">1</td><td>值为 <code>1</code>。</td></tr>
+<tr><td class="fld">Length</td><td class="num">2</td><td class="num">2</td><td>本结构的长度。</td></tr>
+<tr><td class="fld">Reserved</td><td class="num">2</td><td class="num">4</td><td>必须为 0。</td></tr>
+<tr><td class="fld">ID</td><td class="num">2</td><td class="num">6</td><td>该节点在 RIMT 中的唯一 ID，可用于在 RIMT 节点数组中定位它，可直接使用数组索引。</td></tr>
+<tr><td class="fld">Hardware ID</td><td class="num">8</td><td class="num">8</td><td>当 IOMMU 是平台设备时为 ACPI ID；当 IOMMU 是 PCIe 设备时为 PCIe ID（厂商 ID + 设备 ID）。此字段遵循 ACPI [2] 规范描述的 <code>_HID</code> 格式。</td></tr>
+<tr><td class="fld">Base Address</td><td class="num">8</td><td class="num">16</td><td>IOMMU 寄存器的基地址。此字段仅对<strong>平台设备</strong>类型的 IOMMU 有效。若 IOMMU 是 PCIe 设备，其寄存器基地址可从 PCIe BAR 发现或被编程进 BAR。</td></tr>
+<tr><td class="fld">Flags</td><td class="num">4</td><td class="num">24</td>
+<ul class="bitlist">
+<li><strong>Bit 0：IOMMU 是否为 PCIe 设备</strong></li>
+<li>  1：IOMMU 实现为 PCIe 设备。</li>
+<li>  0：IOMMU 实现为平台设备。</li>
+<li><strong>Bit 1：Proximity Domain 有效</strong></li>
+<li>  1：Proximity Domain 字段具有有效值。</li>
+<li>  0：Proximity Domain 字段无有效值。</li>
+<li><strong>Bit[31:2]：保留，必须为 0。</strong></li>
+</ul>
+</tr>
+<tr><td class="fld">Proximity Domain</td><td class="num">4</td><td class="num">28</td><td>该 IOMMU 所属的邻近域。仅当「Proximity Domain Valid」标志置位时有效。为获得最佳 IOMMU 性能，IOMMU 使用的内存数据结构可放置在该邻近域的内存中。</td></tr>
+<tr><td class="fld">PCIe Segment number</td><td class="num">2</td><td class="num">32</td><td>若 IOMMU 实现为 PCIe 设备（Flags 的 Bit 0 为 1），此字段存放<strong>该 IOMMU 所在的 PCIe 段</strong>。</td></tr>
+<tr><td class="fld">PCIe B/D/F</td><td class="num">2</td><td class="num">34</td><td>若 IOMMU 实现为 PCIe 设备（Flags 的 Bit 0 为 1），此字段提供该 IOMMU 的 Bus/Device/Function。</td></tr>
+<tr><td class="fld">Number of interrupt wires</td><td class="num">2</td><td class="num">36</td><td>IOMMU 可用线（wire）或消息信号中断（MSI）来上报自身发起的中断。当 IOMMU 支持线中断时，此字段给出中断线的数量。若 IOMMU 不支持线中断，此字段必须为 0。</td></tr>
+<tr><td class="fld">Interrupt wire array offset</td><td class="num">2</td><td class="num">38</td><td>从本节点起始到「中断线数组」首项的偏移。此字段仅在「Number of interrupt wires」非 0 时有效。</td></tr>
+<tr><td class="fld">Interrupt wire array</td><td class="num">8 * N</td><td class="num">40</td><td>中断线结构数组，N 为数组元素个数。见下表（中断线结构）。</td></tr>
+</table>
+<h3 id="iommu-node-c2">表 4 · Interrupt Wire Structure（中断线结构）</h3>
+<table>
+<tr><th>字段</th><th>字节长度</th><th>字节偏移</th><th>描述</th></tr>
+<tr><td class="fld">Interrupt Number</td><td class="num">4</td><td class="num">0</td><td>中断号，应为全局系统中断（GSI）号。这些是映射到特定 PLIC 或 APLIC 的线中断。OSPM 通过确定每个 PLIC/APLIC 支持的中断输入数及其全局系统中断基址，来确定全局系统中断的映射。</td></tr>
+<tr><td class="fld">Flags</td><td class="num">4</td><td class="num">4</td>
+<ul class="bitlist">
+<li><strong>Bit 0：中断模式</strong></li>
+<li>  0：边沿触发（Edge Triggered）。</li>
+<li>  1：电平触发（Level Triggered）。</li>
+<li><strong>Bit 1：中断极性</strong></li>
+<li>  0：低有效（Active Low）。</li>
+<li>  1：高有效（Active High）。</li>
+<li><strong>Bit[31:2]：保留，必须为 0。</strong></li>
+</ul>
+</tr>
+</table>
+</section><section class="card" id="rc-node">
+<h2><span class="no">7</span>2.1.2 · PCIe Root Complex 节点</h2>
+<p>PCIe 根复合体节点是一个<strong>逻辑 PCIe 根复合体</strong>，可用于表示：一整个物理根复合体、一个/一组 RCiEP、一个独立 PCIe 设备、或 PCIe 主机桥之后的那棵 hierarchy。</p>
+<h3 id="rc-node-c1">表 5 · PCIe Root Complex Node</h3>
+<table>
+<tr><th>字段</th><th>字节长度</th><th>字节偏移</th><th>描述</th></tr>
+<tr><td class="fld">Type</td><td class="num">1</td><td class="num">0</td><td>1 = PCIe 根复合体节点。</td></tr>
+<tr><td class="fld">Revision</td><td class="num">1</td><td class="num">1</td><td>值为 <code>1</code>。</td></tr>
+<tr><td class="fld">Length</td><td class="num">2</td><td class="num">2</td><td>本结构的长度。</td></tr>
+<tr><td class="fld">Reserved</td><td class="num">2</td><td class="num">4</td><td>必须为 0。</td></tr>
+<tr><td class="fld">ID</td><td class="num">2</td><td class="num">6</td><td>该节点在 RIMT 中的唯一 ID，可用于在 RIMT 节点数组中定位它，可直接使用数组索引。</td></tr>
+<tr><td class="fld">Flags</td><td class="num">4</td><td class="num">8</td>
+<ul class="bitlist">
+<li><strong>Bit 0：ATS 支持</strong></li>
+<li>  0：该根复合体不支持 ATS。</li>
+<li>  1：该根复合体支持 ATS。</li>
+<li><strong>Bit 1：PRI 支持</strong></li>
+<li>  0：该根复合体不支持 PRI。</li>
+<li>  1：该根复合体支持 PRI。</li>
+<li><strong>Bit[31:2]：保留，必须为 0。</strong></li>
+</ul>
+</tr>
+<tr><td class="fld">Reserved</td><td class="num">2</td><td class="num">12</td><td>必须为 0。</td></tr>
+<tr><td class="fld">PCIe Segment number</td><td class="num">2</td><td class="num">14</td><td>PCIe 段号，<strong>同 MCFG 中的值、以及 ACPI 命名空间中 <code>_SEG</code> 方法返回的值</strong>。</td></tr>
+<tr><td class="fld">ID mapping array offset</td><td class="num">2</td><td class="num">16</td><td>从本节点起始到 ID 映射数组起始的偏移。</td></tr>
+<tr><td class="fld">Number of ID mappings</td><td class="num">2</td><td class="num">18</td><td>ID 映射数组中的元素个数。</td></tr>
+<tr><td class="fld">ID mapping array</td><td class="num">20 * N</td><td class="num">20</td><td>ID 映射结构数组，N 为 ID 映射结构的个数。见「ID 映射结构」。</td></tr>
+</table>
+</section><section class="card" id="idmap">
+<h2><span class="no">8</span>ID 映射结构</h2>
+<p>ID 映射结构提供「设备如何连接到 IOMMU」的信息。设备可由 <strong>source ID</strong> 原生标识，但平台可以使用<strong>重映射后的 ID</strong>来标识设备发给 IOMMU 的事务。</p>
+<h4 id="idmap-c1">对 PCIe 设备</h4>
+<p>source ID 是 16 位的三元组：PCIe 总线号（8 位）+ 设备号（5 位）+ 功能号（3 位），合称 <strong>Routing Identifier（RID）</strong>。</p>
+<ul>
+<li>一段 source ID 范围<strong>只能映射到单一 IOMMU</strong>。</li>
+<li>若有多个根复合体具有<strong>相同的 PCIe 段号</strong>，它们的 source ID 范围<strong>不得重叠</strong>。</li>
+<li>对属于同一 PCIe 段的每个根复合体 ACPI 设备对象，固件必须包含 <code>_DSM</code>（Device Specific Method）的 <strong>Function Index 5</strong>，用于保留启动配置（如 PCI Firmware Specification [3] 所定义）。该 <code>_DSM</code> 方法必须返回 0，以指示操作系统必须保留固件在启动时分配的 PCIe 资源。</li>
+</ul>
+<h4 id="idmap-c2">对平台设备</h4>
+<p>source ID 是实现特定的 ID，由设备驱动管理。ID 映射数组的每一项，提供从一段 source ID 范围到「IOMMU 输入端将使用的对应 device ID」的映射。示例见第 3 章。</p>
+<h3 id="idmap-c3">表 6 · ID Mapping Structure（ID 映射结构）</h3>
+<table>
+<tr><th>字段</th><th>字节长度</th><th>字节偏移</th><th>描述</th></tr>
+<tr><td class="fld">Source ID Base</td><td class="num">4</td><td class="num">0</td><td>本项所映射的一段 source ID 范围的起始值，映射到「IOMMU 输入端将使用的一段 device ID」。</td></tr>
+<tr><td class="fld">Number of IDs</td><td class="num">4</td><td class="num">4</td><td>该范围内的 ID 数量。范围必须包含「OS 启动期间稍后才可能被枚举到的设备」的 ID（例如 SR-IOV 虚拟功能）。</td></tr>
+<tr><td class="fld">Destination Device ID Base</td><td class="num">4</td><td class="num">8</td><td>本项映射的目标 ID 范围的起始值。这就是 RISC-V IOMMU 规范 [1] 所定义的 <code>device_id</code>。</td></tr>
+<tr><td class="fld">Destination IOMMU Offset</td><td class="num">4</td><td class="num">12</td><td>与这些 ID 关联的目标 IOMMU。此字段是 RISC-V IOMMU 节点<strong>相对 RIMT 表起始的偏移</strong>。</td></tr>
+<tr><td class="fld">Flags</td><td class="num">4</td><td class="num">16</td>
+<ul class="bitlist">
+<li><strong>Bit 0：ATS Required</strong></li>
+<li>  0：设备无需启用 ATS 即可工作。</li>
+<li>  1：设备必须启用 ATS 才能工作。</li>
+<li><strong>Bit 1：PRI Required</strong></li>
+<li>  0：设备无需启用 PRI 即可工作。</li>
+<li>  1：设备必须启用 PRI 才能工作。</li>
+<li><strong>Bit[31:2]：保留，必须为 0。</strong></li>
+</ul>
+</tr>
+</table>
+</section><section class="card" id="plat-node">
+<h2><span class="no">9</span>2.1.3 · Platform Device 节点</h2>
+<p>可能存在通过 DSDT（Differentiated System Description Table）枚举的非 PCIe 平台设备。这些设备在映射表中可有一个或多个 source ID，但它们可以用自己的方案来定义 source ID。因此，这些 source ID 可能仅对该 ACPI 平台设备唯一。这些 source ID 的解读由平台设备的设备驱动负责。</p>
+<h3 id="plat-node-c1">表 7 · Platform Device Node</h3>
+<table>
+<tr><th>字段</th><th>字节长度</th><th>字节偏移</th><th>描述</th></tr>
+<tr><td class="fld">Type</td><td class="num">1</td><td class="num">0</td><td>2 = 平台设备节点。</td></tr>
+<tr><td class="fld">Revision</td><td class="num">1</td><td class="num">1</td><td>值为 <code>1</code>。</td></tr>
+<tr><td class="fld">Length</td><td class="num">2</td><td class="num">2</td><td>本结构的长度。</td></tr>
+<tr><td class="fld">Reserved</td><td class="num">2</td><td class="num">4</td><td>必须为 0。</td></tr>
+<tr><td class="fld">ID</td><td class="num">2</td><td class="num">6</td><td>该节点在 RIMT 中的唯一 ID，可用于在 RIMT 节点数组中定位它，可直接使用数组索引。</td></tr>
+<tr><td class="fld">ID mapping array offset</td><td class="num">2</td><td class="num">8</td><td>从本节点起始到 ID 映射数组起始的偏移。</td></tr>
+<tr><td class="fld">Number of ID mappings</td><td class="num">2</td><td class="num">10</td><td>ID 映射数组中的元素个数。</td></tr>
+<tr><td class="fld">Device Object Name</td><td class="num">M</td><td class="num">12</td><td>以空字符结尾的 ASCII 字符串，是 ACPI 命名空间中设备对象的完整路径。</td></tr>
+<tr><td class="fld">Padding</td><td class="num">P</td><td class="num">12 + M</td><td>用 0 填充，使 ID 映射数组对齐到 4 字节边界。</td></tr>
+<tr><td class="fld">ID Mapping Array</td><td class="num">20 * N</td><td class="num">12 + M + P</td><td>ID 映射结构数组，N 为 ID 映射结构的个数。见「ID 映射结构」。</td></tr>
+</table>
+</section><section class="card" id="ch3">
+<h2><span class="no">10</span>第 3 章 · ID 映射示例</h2>
+<h3 id="ch3-c1">表 8 · PCIe 设备 ID 映射示例</h3>
+<table>
+<tr><th>Source ID Base</th><th>Number of IDs</th><th>Destination Device ID Base</th><th>Destination IOMMU Offset</th><th>Flags</th></tr>
+<tr><td class="num">0x0000</td><td class="num">0x10</td><td class="num">0x0</td><td>IOMMU0_OFFSET_IN_RIMT</td><td class="num">0</td></tr>
+<tr><td class="num">0x0100</td><td class="num">0x10</td><td class="num">0x10</td><td>IOMMU0_OFFSET_IN_RIMT</td><td class="num">0</td></tr>
+</table>
+<h3 id="ch3-c2">表 9 · 平台设备 ID 映射示例</h3>
+<table>
+<tr><th>Source ID Base</th><th>Number of IDs</th><th>Destination Device ID Base</th><th>Destination IOMMU Offset</th><th>Flags</th></tr>
+<tr><td class="num">0x0000</td><td class="num">0x1</td><td class="num">0x20</td><td>IOMMU0_OFFSET_IN_RIMT</td><td class="num">0</td></tr>
+</table>
+</section><section class="card" id="bib">
+<h2><span class="no">11</span>参考文献</h2>
+<ul>
+<li>[1] “RISC-V IOMMU Specification 1.0.0.” — <code>github.com/riscv-non-isa/riscv-iommu/releases/download/v1.0.0/riscv-iommu.pdf</code></li>
+<li>[2] “Advanced Configuration and Power Interface Specification 6.5.” — <code>uefi.org/specs/ACPI/6.5</code></li>
+<li>[3] “PCI Firmware Specification 3.3.” — <code>members.pcisig.com/wg/PCI-SIG/document/folder/862</code></li>
+</ul>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>

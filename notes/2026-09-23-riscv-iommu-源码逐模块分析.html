@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>RISC-V IOMMU Linux 驱动 · 源码逐模块分析</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+/* ---------- 侧边栏 ---------- */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+#toc .lvl3 { font-size: 0.78rem; padding-left: 2.4rem; color: var(--ink-mute); }
+
+/* ---------- 内容区 ---------- */
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+/* ---------- hero ---------- */
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub, header.hero .subtitle { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+/* ---------- 卡片 ---------- */
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3, h4 {
+  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
+  scroll-margin-top: 1.5rem;
+}
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+em, i { font-style: italic; }
+
+/* ---------- tag pill ---------- */
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+/* ---------- 代码 ---------- */
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+pre code .kw   { color: #1E3A8A; font-weight: 600; }
+pre code .str  { color: #C04E1A; }
+pre code .num  { color: #9a6a00; }
+pre code .type { color: #5b3fbf; }
+pre code .cmt  { color: #3f6b4f; }
+pre.diagram {
+  background: var(--paper-soft); color: var(--ink);
+  border: 1px solid var(--rule); font-size: 0.82rem; line-height: 1.55;
+}
+.hl-amber  { color: #a86f10; font-weight: 600; }
+.hl-red    { color: #bc3946; font-weight: 600; }
+.hl-green  { color: #1f7a52; font-weight: 600; }
+.hl-accent { color: #1E3A8A; font-weight: 600; }
+
+/* ---------- 表格 ---------- */
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+/* ---------- callout ---------- */
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+/* ---------- analogy ---------- */
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+/* ---------- blockquote ---------- */
+blockquote {
+  margin: 1.2rem 0; padding: 0.8rem 1.3rem;
+  border-left: 3px solid var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2), transparent 95%);
+  border-radius: 0 10px 10px 0; font-style: italic; color: var(--ink-soft);
+}
+blockquote p:last-child { margin-bottom: 0; }
+blockquote .src {
+  display: block; margin-top: 0.6rem;
+  color: var(--ink-mute); font-size: 0.8rem; font-style: normal;
+}
+
+/* ---------- verdict / note（cache_coherency 专用） ---------- */
+.verdict {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  border-radius: 0 10px 10px 0; padding: 1.1rem 1.4rem;
+  margin: 1.4rem 0; font-size: 1.02rem;
+}
+.verdict strong { color: var(--accent); }
+.note {
+  border-left: 4px solid var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 94%);
+  border-radius: 0 10px 10px 0; padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0; color: var(--ink-soft); font-size: 0.92rem;
+}
+
+/* ---------- 分层图 diagram（cache_coherency 专用） ---------- */
+.diagram { margin: 1.2rem 0; }
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.8rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.95rem; color: var(--ink); }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.2rem; }
+.layer.src   { border-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.layer.cache { border-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 95%); }
+.layer.dev   { border-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.arrow { text-align: center; color: var(--ink-mute); font-size: 0.82rem; padding: 0.4rem 0; }
+.arrow b { color: var(--ink); }
+.split { display: flex; gap: 0.9rem; }
+.split > div { flex: 1; }
+@media (max-width: 640px) { .split { flex-direction: column; } }
+
+.foot {
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+  color: var(--ink-mute); font-size: 0.8rem;
+}
+
+/* ---------- 列表 ---------- */
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+/* ---------- 动画播放器 ---------- */
+.anim { margin: 1.4rem 0; }
+.anim-controls { display: flex; gap: 0.6rem; margin-bottom: 0.9rem; align-items: center; flex-wrap: wrap; }
+.anim-controls button {
+  background: var(--card); color: var(--ink); border: 1px solid var(--rule-strong);
+  padding: 0.45rem 1.1rem; border-radius: 8px; cursor: pointer;
+  font-size: 0.85rem; font-family: inherit; transition: all .15s;
+}
+.anim-controls button:hover { border-color: var(--accent); color: var(--accent); }
+.anim-controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.anim-controls button.primary:hover { background: #162a5e; }
+.anim-controls .hint { color: var(--ink-mute); font-size: 0.8rem; }
+
+.steps { display: flex; flex-direction: column; gap: 0.6rem; }
+.step {
+  background: var(--paper-soft); border: 1px solid var(--rule); border-radius: 12px;
+  padding: 0.9rem 1.1rem; opacity: .55; transform: translateX(-4px);
+  transition: opacity .35s, transform .35s, border-color .35s, box-shadow .35s, background .35s;
+}
+.step.active {
+  opacity: 1; transform: translateX(0);
+  border-color: var(--accent); background: var(--card);
+  box-shadow: 0 0 0 1px rgba(79,70,229,.22), 0 8px 24px rgba(79,70,229,.12);
+}
+.step .step-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+.step .dot {
+  width: 1.45rem; height: 1.45rem; border-radius: 50%;
+  background: var(--rule-strong); color: var(--ink-mute);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; flex: none; transition: all .3s; font-family: var(--font-en);
+}
+.step.active .dot { background: var(--accent); color: #fff; font-weight: 600; }
+.step .step-title { font-size: 0.98rem; color: var(--ink); }
+.step .step-body { font-size: 0.88rem; color: var(--ink-soft); }
+.step .step-body code { color: #a86f10; background: color-mix(in oklab, var(--accent-3), transparent 88%); }
+.step pre { margin: 0.6rem 0 0; font-size: 0.8rem; }
+
+/* ---------- 时序图 ---------- */
+.timeline { margin: 1.2rem 0; }
+.lane { display: flex; align-items: stretch; min-height: 46px; border-bottom: 1px solid var(--rule); }
+.lane .label {
+  width: 110px; flex: none; font-size: 0.78rem; color: var(--ink-mute);
+  padding: 0.8rem 0.7rem; border-right: 1px solid var(--rule);
+  background: var(--paper-soft); display: flex; align-items: center;
+}
+.lane .track { flex: 1; position: relative; }
+.evt {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: var(--card); border: 1px solid var(--rule-strong); border-radius: 8px;
+  padding: 0.3rem 0.7rem; font-size: 0.75rem; color: var(--ink); white-space: nowrap;
+  opacity: .35; transition: opacity .4s, border-color .4s, box-shadow .4s;
+}
+.evt.active { opacity: 1; border-color: var(--accent); box-shadow: 0 0 10px rgba(79,70,229,.25); }
+.evt.amber.active { border-color: var(--accent-3); box-shadow: 0 0 10px rgba(217,154,43,.25); }
+.evt.red.active   { border-color: var(--red); box-shadow: 0 0 10px rgba(214,69,80,.25); }
+.evt.green.active { border-color: var(--green); box-shadow: 0 0 10px rgba(47,158,110,.25); }
+
+footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-top: 3rem; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul><li><a class="lvl1" href="#map">总览地图</a><ul></ul></li><li><a class="lvl1" href="#m1">1. 基础设施</a><ul><li><a class="lvl2" href="#m1-c1">1.1 超时宏（:31–34）</a><ul></ul></li><li><a class="lvl2" href="#m1-c2">1.2 队列默认长度（:37–38）</a><ul></ul></li><li><a class="lvl2" href="#m1-c3">1.3 PPN ↔ 物理地址转换（:41–42）</a><ul></ul></li><li><a class="lvl2" href="#m1-c4">1.4 dev_to_iommu（:44–45）</a><ul></ul></li><li><a class="lvl2" href="#m1-c5">1.5 PSCID 分配命名空间（:48–49）</a><ul></ul></li><li><a class="lvl2" href="#m1-c6">1.6 devres 内存管理（:52–103）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m2">2. 硬件队列管理</a><ul><li><a class="lvl2" href="#m2-c1">2.0 队列抽象（iommu.h:23–36）</a><ul></ul></li><li><a class="lvl2" href="#m2-c2">2.1 QUEUE_INIT 宏（:110–116）</a><ul></ul></li><li><a class="lvl2" href="#m2-c3">2.2 四个关键偏移宏（:119–122）</a><ul></ul></li><li><a class="lvl2" href="#m2-c4">2.3 无界 shadow 索引 —— 核心设计</a><ul></ul></li><li><a class="lvl2" href="#m2-c5">2.4 queue_alloc 四件事（:132–196）</a><ul></ul></li><li><a class="lvl2" href="#m2-c6">2.5 硬中断 queue_ipsr（:199–207）与 queue_vec（:209–213）</a><ul></ul></li><li><a class="lvl2" href="#m2-c7">2.6 queue_enable 六件事（:221–281）</a><ul></ul></li><li><a class="lvl2" href="#m2-c8">2.7 queue_disable（:287–306）</a><ul></ul></li><li><a class="lvl2" href="#m2-c9">2.8 消费侧：consume / release / cons（:312–364）</a><ul></ul></li><li><a class="lvl2" href="#m2-c10">2.9 queue_wait 与 queue_wait_for_space（:367–419）</a><ul></ul></li><li><a class="lvl2" href="#m2-c11">2.10 queue_send 入队四步（:422–476）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m3">3. 命令队列 CQ</a><ul><li><a class="lvl2" href="#m3-c1">3.0 命令格式（iommu-bits.h:459–462）</a><ul></ul></li><li><a class="lvl2" href="#m3-c2">3.1 cmdq_process（:483–508）—— CQ 中断 thread</a><ul></ul></li><li><a class="lvl2" href="#m3-c3">3.2 cmd_send（:511–515）</a><ul></ul></li><li><a class="lvl2" href="#m3-c4">3.3 cmd_sync（:518–536）—— 同步栅栏</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m4">4. Fault 队列 FQ</a><ul><li><a class="lvl2" href="#m4-c1">4.0 FQ record 格式（iommu-bits.h:543–548）</a><ul></ul></li><li><a class="lvl2" href="#m4-c2">4.1 riscv_iommu_fault（:542–553）</a><ul></ul></li><li><a class="lvl2" href="#m4-c3">4.2 fltq_process（:556–588）—— FQ 中断 thread</a><ul></ul></li><li><a class="lvl2" href="#m4-c4">4.3 三个队列方向一览</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m5">5. 设备目录 DDT / DC</a><ul><li><a class="lvl2" href="#m5-c1">5.0 数据结构铺垫</a><ul></ul></li><li><a class="lvl2" href="#m5-c2">5.1 get_dc（:591–677）—— devid → DC 的查找/按需分配</a><ul><li><a class="lvl3" href="#m5-c3">① DDI 位分配（:617–625）</a></li><li><a class="lvl3" href="#m5-c4">② 层级范围校验（:628–630）</a></li><li><a class="lvl3" href="#m5-c5">③ 非叶子节点遍历 + 按需建表（:633–667）</a></li><li><a class="lvl3" href="#m5-c6">④ 叶子节点定位（:674）</a></li></ul></li><li><a class="lvl2" href="#m5-c7">5.2 riscv_iommu_disable（:683–691）</a><ul></ul></li><li><a class="lvl2" href="#m5-c8">5.3 riscv_iommu_read_ddtp（:693–698）</a><ul></ul></li><li><a class="lvl2" href="#m5-c9">5.4 riscv_iommu_iodir_alloc（:700–740）</a><ul></ul></li><li><a class="lvl2" href="#m5-c10">5.5 riscv_iommu_iodir_set_mode（:747–833）—— WARL 降级协商</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m6">6. domain 与 bond</a><ul><li><a class="lvl2" href="#m6-c1">6.0 三个数据结构</a><ul></ul></li><li><a class="lvl2" href="#m6-c2">6.1 bond_link（:877–905）</a><ul></ul></li><li><a class="lvl2" href="#m6-c3">6.2 bond_unlink（:907–943）</a><ul></ul></li><li><a class="lvl2" href="#m6-c4">6.3 并发同步图（注释里的精华）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m7">7. IOTLB 失效</a><ul><li><a class="lvl2" href="#m7-c1">7.0 struct riscv_iommu_tlbi（:945–958）</a><ul></ul></li><li><a class="lvl2" href="#m7-c2">7.1 tlbi_calc（:960–1003）—— 失效粒度决策</a><ul></ul></li><li><a class="lvl2" href="#m7-c3">7.2 iotlb_inval_iommu（:1005–1049）—— 对单个 IOMMU 发失效</a><ul></ul></li><li><a class="lvl2" href="#m7-c4">7.3 iotlb_inval（:1051–1113）—— 对所有挂载 IOMMU 失效</a><ul></ul></li><li><a class="lvl2" href="#m7-c5">7.4 iodir_iotinval（:1121–1176）</a><ul></ul></li><li><a class="lvl2" href="#m7-c6">7.5 iodir_update（:1189–1249）—— 两遍式目录更新</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m8">8. 页表管理</a><ul><li><a class="lvl2" href="#m8-c1">8.1 iotlb_flush_all（:1255–1266）</a><ul></ul></li><li><a class="lvl2" href="#m8-c2">8.2 iotlb_sync（:1268–1275）—— 先失效、再释放</a><ul></ul></li><li><a class="lvl2" href="#m8-c3">8.3 free_paging_domain（:1277–1288）</a><ul></ul></li><li><a class="lvl2" href="#m8-c4">8.4 pt_supported（:1290–1303）</a><ul></ul></li><li><a class="lvl2" href="#m8-c5">8.5 attach_paging_domain（:1305–1333）—— attach 流程</a><ul></ul></li><li><a class="lvl2" href="#m8-c6">8.6 paging_domain_ops（:1335–1341）</a><ul></ul></li><li><a class="lvl2" href="#m8-c7">8.7 alloc_paging_domain（:1343–1395）—— domain 构造</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m9">9. blocking / identity domain</a><ul><li><a class="lvl2" href="#m9-c1">9.1 blocking domain（:1397–1417）</a><ul></ul></li><li><a class="lvl2" href="#m9-c2">9.2 identity domain（:1419–1438）</a><ul></ul></li><li><a class="lvl2" href="#m9-c3">9.3 两者的差别只在一个 V 位</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m10">10. IOMMU ops</a><ul><li><a class="lvl2" href="#m10-c1">10.1 device_group（:1440–1445）</a><ul></ul></li><li><a class="lvl2" href="#m10-c2">10.2 of_xlate（:1447–1450）</a><ul></ul></li><li><a class="lvl2" href="#m10-c3">10.3 probe_device（:1452–1497）—— 设备接管入口</a><ul></ul></li><li><a class="lvl2" href="#m10-c4">10.4 release_device（:1499–1504）</a><ul></ul></li><li><a class="lvl2" href="#m10-c5">10.5 riscv_iommu_ops（:1506–1515）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m11">11. 初始化 / 移除</a><ul><li><a class="lvl2" href="#m11-c1">11.1 init_check（:1517–1569）—— 三项启动检查</a><ul><li><a class="lvl3" href="#m11-c2">① DDTP 状态 + kdump 处理（:1526–1535）</a></li><li><a class="lvl3" href="#m11-c3">② 字节序检查（:1537–1548）</a></li><li><a class="lvl3" href="#m11-c4">③ 中断向量分发（:1554–1566）</a></li></ul></li><li><a class="lvl2" href="#m11-c5">11.2 riscv_iommu_remove（:1571–1578）</a><ul></ul></li><li><a class="lvl2" href="#m11-c6">11.3 riscv_iommu_init（:1580–1649）—— 启动流程总装</a><ul></ul></li><li><a class="lvl2" href="#m11-c7">11.4 全驱动闭环</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m12">12. PCIe 设备接入</a><ul><li><a class="lvl2" href="#m12-c1">12.1 设备 ID（:23–31）</a><ul></ul></li><li><a class="lvl2" href="#m12-c2">12.2 probe 流程（:33–95）</a><ul><li><a class="lvl3" href="#m12-c3">① 托管式使能设备（:39）</a></li><li><a class="lvl3" href="#m12-c4">② 校验 BAR0（:43–47）</a></li><li><a class="lvl3" href="#m12-c5">③ ioremap 寄存器（:49）</a></li><li><a class="lvl3" href="#m12-c6">④ 分配并初始化设备结构（:53–61）</a></li><li><a class="lvl3" href="#m12-c7">⑤ 读能力寄存器（:64–65）</a></li><li><a class="lvl3" href="#m12-c8">⑥ 校验中断生成能力（:68–75）</a></li><li><a class="lvl3" href="#m12-c9">⑦ 分配 MSI/MSI-X 中断向量（:78–86）</a></li><li><a class="lvl3" href="#m12-c10">⑧ 关闭 WSI（:89–92）</a></li><li><a class="lvl3" href="#m12-c11">⑨ 交给核心初始化（:94）</a></li></ul></li><li><a class="lvl2" href="#m12-c12">12.3 remove 与 shutdown（:97–109）</a><ul></ul></li><li><a class="lvl2" href="#m12-c13">12.4 设备表与驱动注册（:111–128）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#m13">13. 平台设备接入</a><ul><li><a class="lvl2" href="#m13-c1">13.1 头文件差异（:13–22）</a><ul></ul></li><li><a class="lvl2" href="#m13-c2">13.2 write_msi_msg（:24–44）—— 写内部 MSI 配置表</a><ul></ul></li><li><a class="lvl2" href="#m13-c3">13.3 probe 流程（:46–143）</a><ul><li><a class="lvl3" href="#m13-c4">① 映射寄存器（:60）</a></li><li><a class="lvl3" href="#m13-c5">② 读能力、预设中断数（:68–71）</a></li><li><a class="lvl3" href="#m13-c6">③ IGS 三路分支（:73–140）</a></li><li><a class="lvl3" href="#m13-c7">分支 A：IGS_BOTH / IGS_MSI —— MSI 模式（:75–107）</a></li><li><a class="lvl3" href="#m13-c8">分支 B：IGS_WSI —— WSI 模式（:117–137）</a></li><li><a class="lvl3" href="#m13-c9">分支 C：default（:138–139）</a></li><li><a class="lvl3" href="#m13-c10">④ 交给核心（:142）</a></li></ul></li><li><a class="lvl2" href="#m13-c11">13.4 remove 与 shutdown（:145–159）</a><ul></ul></li><li><a class="lvl2" href="#m13-c12">13.5 匹配表与注册（:161–184）</a><ul></ul></li><li><a class="lvl2" href="#m13-c13">13.6 两个接入层对比</a><ul></ul></li></ul></li></ul></nav></aside><main class="content"><header class="hero">
+<h1>RISC-V IOMMU Linux 驱动 · 源码逐模块分析</h1>
+<div class="sub">按源码顺序，把 <code>iommu.c</code> 全 1651 行拆成 11 个模块，并补齐 <code>iommu-pci.c</code> / <code>iommu-platform.c</code> 两个接入层逐条精读</div>
+<div class="meta">
+    源码 <code>drivers/iommu/riscv/iommu.c</code>（1651 行）· <code>iommu-pci.c</code>（129 行）· <code>iommu-platform.c</code>（185 行）·
+    <code>iommu.h</code>（91 行）· <code>iommu-bits.h</code>（811 行） · 对照 RISC-V IOMMU Architecture Specification v1.0
+  </div>
+</header><section class="card" id="map">
+<h2><span class="no">◈</span>总览地图</h2>
+<p class="ref">源码 <code>iommu.c</code> 全文件 · 按定义顺序切分（另附两个接入层文件）</p>
+<p class="lead">核心驱动 <code>iommu.c</code> 按源码顺序可切成 11 个模块，彼此形成一条完整数据流；<code>iommu-pci.c</code> 与 <code>iommu-platform.c</code> 是把它挂到两种总线上、配置中断的接入层。下表是导航索引：</p>
+<table>
+<tr><th>#</th><th>模块</th><th>行号</th><th>核心内容</th></tr>
+<tr><td>①</td><td>基础设施</td><td>1–103</td><td>超时/长度宏、PPN↔物理地址转换、PSCID IDA、devres 内存</td></tr>
+<tr><td>②</td><td>硬件队列管理</td><td>105–476</td><td>无界 shadow 索引、queue_alloc/enable/consume/send</td></tr>
+<tr><td>③</td><td>命令队列 CQ</td><td>478–536</td><td>命令格式、cmdq_process、cmd_send、cmd_sync</td></tr>
+<tr><td>④</td><td>Fault 队列 FQ</td><td>538–588</td><td>FQ record 格式、fault、fltq_process</td></tr>
+<tr><td>⑤</td><td>设备目录 DDT/DC</td><td>590–833</td><td>get_dc 目录遍历、disable、iodir_alloc、iodir_set_mode</td></tr>
+<tr><td>⑥</td><td>domain 与 bond</td><td>835–943</td><td>domain/bond 结构、bond_link、bond_unlink</td></tr>
+<tr><td>⑦</td><td>IOTLB 失效</td><td>945–1249</td><td>tlbi_calc、iotlb_inval、iodir_iotinval、iodir_update</td></tr>
+<tr><td>⑧</td><td>页表管理</td><td>1251–1395</td><td>alloc/attach paging domain、iotlb_sync/flush_all</td></tr>
+<tr><td>⑨</td><td>blocking/identity domain</td><td>1397–1438</td><td>阻断与透传两种静态 domain</td></tr>
+<tr><td>⑩</td><td>IOMMU ops</td><td>1440–1515</td><td>probe/release、device_group、of_xlate、ops 表</td></tr>
+<tr><td>⑪</td><td>初始化/移除</td><td>1517–1651</td><td>init_check、init、remove</td></tr>
+<tr><td>⑫</td><td>PCIe 设备接入</td><td>iommu-pci.c:1–129</td><td>probe/remove/shutdown、MSI 中断、能力校验</td></tr>
+<tr><td>⑬</td><td>平台设备接入</td><td>iommu-platform.c:1–185</td><td>MSI 配置表写入、MSI/WSI 双模式、OF/ACPI 匹配</td></tr>
+</table>
+<div class="callout">
+<div class="title">一条完整数据流</div>
+<p class="lead" style="margin:0">启动 ②③④⑤ 建队列和目录 → ⑩ 注册 ops 接管设备 → ⑧ attach 页表 → 硬件走 ⑤ 目录查 ⑧ 页表翻译 → 页表变更走 ⑦ 失效 → 硬件 fault 走 ④ 上报 → ⑪ 收尾。</p>
+</div>
+</section><section class="card" id="m1">
+<h2><span class="no">1</span>基础设施 <span class="tag amber">iommu.c:1–103</span></h2>
+<p class="ref">超时宏 <code>:31–34</code> · 队列长度 <code>:37–38</code> · PPN 转换 <code>:41–42</code> · dev_to_iommu <code>:44–45</code> · PSCID IDA <code>:48–49</code> · devres <code>:52–103</code></p>
+<h3 id="m1-c1">1.1 超时宏（:31–34）</h3>
+<pre><code>#define RISCV_IOMMU_QCSR_TIMEOUT       <span class="num">150000</span>   <span class="cmt">// 150 ms</span>
+#define RISCV_IOMMU_QUEUE_TIMEOUT      <span class="num">150000</span>   <span class="cmt">// 150 ms</span>
+#define RISCV_IOMMU_DDTP_TIMEOUT      <span class="num">10000000</span>  <span class="cmt">// 10 s</span>
+#define RISCV_IOMMU_IOTINVAL_TIMEOUT  <span class="num">90000000</span>  <span class="cmt">// 90 s</span></code></pre>
+<p>四条超时对应四类硬件轮询场景，量级差异本身就有信息量：</p>
+<ul>
+<li><b>QCSR / QUEUE（150 ms）</b>：队列 CSR 位、队列指针寄存器，纯 MMIO 读回，硬件应立即响应。</li>
+<li><b>DDTP（10 s）</b>：设备目录表指针寄存器，切换 DDT 模式时硬件要重建目录缓存，慢得多。</li>
+<li><b>IOTINVAL（90 s）</b>：最慢，因为要等硬件<strong>彻底清空 IOTLB 缓存项</strong>，缓存项越多越久。后面 <code>iodir_set_mode</code> 和 <code>iotlb_inval</code> 里同步都走这条。</li>
+</ul>
+<h3 id="m1-c2">1.2 队列默认长度（:37–38）</h3>
+<pre><code>#define RISCV_IOMMU_DEF_CQ_COUNT  <span class="num">8192</span>
+#define RISCV_IOMMU_DEF_FQ_COUNT  <span class="num">4096</span></code></pre>
+<p>CQ（命令队列）默认 8192 条，FQ（fault 队列）默认 4096 条。注意这是<strong>上限约束</strong>，实际长度由 <code>queue_alloc</code> 里的 <code>mask</code> 和硬件 WARL 回读共同决定（模块 ②）。</p>
+<h3 id="m1-c3">1.3 PPN ↔ 物理地址转换（:41–42）</h3>
+<pre><code>#define phys_to_ppn(pa)  (((pa) &gt;&gt; <span class="num">2</span>) &amp; (((1ULL &lt;&lt; <span class="num">44</span>) - <span class="num">1</span>) &lt;&lt; <span class="num">10</span>))
+#define ppn_to_phys(pn)  (((pn) &lt;&lt; <span class="num">2</span>) &amp; (((1ULL &lt;&lt; <span class="num">44</span>) - <span class="num">1</span>) &lt;&lt; <span class="num">12</span>))</code></pre>
+<p>这是整份驱动最底层的位运算，注释 <code>PHYS &lt;=&gt; PPN[53:10]</code> 点明出处。PPN 在 RISC-V IOMMU 寄存器里的规范位是 <strong>[53:10]</strong>，隐含低 [9:0]=0（4 KiB 对齐）。逐位拆开：</p>
+<ul>
+<li><code>phys_to_ppn(pa)</code>：<code>(pa &gt;&gt; 2)</code> 等价于把物理地址的 bit 12..55 平移到 bit 10..53；掩码 <code>((2^44-1) &lt;&lt; 10)</code> 保留这 44 位，其余清零。<strong>净效果 = <code>(pa &gt;&gt; 12) &lt;&lt; 10</code></strong>，即「页号 × 2^10」填入 PPN 字段。</li>
+<li><code>ppn_to_phys(pn)</code>：逆过程，<code>(pn &lt;&lt; 2)</code> 等价 <code>(pn &gt;&gt; 10) &lt;&lt; 12</code>，把 PPN 字段还原成 4 KiB 对齐的物理地址。</li>
+</ul>
+<div class="callout amber">
+<div class="title">关键约束：44 位页号</div>
+<p class="lead" style="margin:0">44 位页号 × 4 KiB = <code>2^56</code> 的物理地址空间。RISC-V 物理地址上限 56 位（Sv57），所以这里封顶 44 位 PPN 正好匹配。</p>
+</div>
+<h3 id="m1-c4">1.4 dev_to_iommu（:44–45）</h3>
+<pre><code>#define dev_to_iommu(dev) \
+    iommu_get_iommu_dev(dev, <span class="kw">struct</span> <span class="type">riscv_iommu_device</span>, iommu)</code></pre>
+<p>从任意 <code>struct device *</code> 反向取回它所属的 <code>riscv_iommu_device</code>。靠 <code>struct riscv_iommu_device</code> 里内嵌 <code>struct iommu_device iommu</code> 成员做 <code>container_of</code>。驱动后半部分（bond、iotlb_inval）大量靠它从设备反查 IOMMU。</p>
+<h3 id="m1-c5">1.5 PSCID 分配命名空间（:48–49）</h3>
+<pre><code><span class="kw">static</span> DEFINE_IDA(riscv_iommu_pscids);
+#define RISCV_IOMMU_MAX_PSCID  (BIT(<span class="num">20</span>) - <span class="num">1</span>)   <span class="cmt">// 0xFFFFF</span></code></pre>
+<p><strong>PSCID（Process Soft Context ID）</strong>是每个 paging domain 的软上下文编号，范围 1…2^20-1。它不是给设备用的 devid，而是给<strong>翻译缓存打标</strong>用的：IOTLB 失效时靠 <code>PSCID</code> 定位要刷的缓存项（模块 ⑦ 会反复见到）。全局 <code>IDA</code> 保证各 domain 的 PSCID 不重复，<code>ida_alloc_range</code> 从 1 起（0 保留给裸/BARE 场景）。</p>
+<h3 id="m1-c6">1.6 devres 内存管理（:52–103）</h3>
+<pre><code><span class="kw">static</span> <span class="kw">void</span> *riscv_iommu_get_pages(<span class="kw">struct</span> <span class="type">riscv_iommu_device</span> *iommu, <span class="kw">unsigned</span> <span class="kw">int</span> size)</code></pre>
+<p>用 Linux 的 <strong>devres（设备资源管理）</strong>框架包装 <code>iommu_alloc_pages_node_sz</code>：分配成功后 <code>devres_add</code> 挂到 <code>iommu-&gt;dev</code> 上，驱动 <code>remove</code> 时内核自动回调 <code>riscv_iommu_devres_pages_release</code> 释放。<code>riscv_iommu_free_pages</code> 则按 <code>addr</code> 精确匹配后 <code>devres_release</code>。</p>
+<div class="callout">
+<div class="title">为什么值得单独封装</div>
+<p class="lead" style="margin:0">队列 ring buffer、DDT 各级目录页这些内存的<strong>生命周期都锚定在 IOMMU 设备上</strong>，不该由某个调用方手动 free。用 devres 能避免 device remove 时的内存泄漏。</p>
+</div>
+<p class="lead">模块 ① 是地基，后面所有模块都在调用它（PPN 转换、get_pages、dev_to_iommu）。</p>
+</section><section class="card" id="m2">
+<h2><span class="no">2</span>硬件队列管理 <span class="tag amber">iommu.c:105–476</span></h2>
+<p class="ref">结构体 <code>iommu.h:23–36</code> · 偏移宏 <code>:119–122</code> · 分配 <code>:132–196</code> · 使能 <code>:221–281</code> · 入队 <code>:422–476</code></p>
+<p class="lead">整个驱动的数据通路建立在两个硬件队列上：<code>cmdq</code>（软件下发命令给 IOMMU）和 <code>fltq</code>（IOMMU 上报 fault 给软件）。二者共用同一套队列抽象，只有方向相反。</p>
+<h3 id="m2-c1">2.0 队列抽象（iommu.h:23–36）</h3>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_queue</span> {
+    <span class="type">atomic_t</span> prod;              <span class="cmt">// 无界 producer 分配索引</span>
+    <span class="type">atomic_t</span> head;              <span class="cmt">// 无界 shadow consumer 索引</span>
+    <span class="type">atomic_t</span> tail;              <span class="cmt">// 无界 shadow producer 索引</span>
+    <span class="type">raw_spinlock_t</span> lock;        <span class="cmt">// 序列化队列发布</span>
+    <span class="kw">unsigned</span> <span class="kw">int</span> mask;          <span class="cmt">// 索引掩码 = 队列长度 - 1</span>
+    <span class="kw">unsigned</span> <span class="kw">int</span> irq;           <span class="cmt">// 分配的中断号</span>
+    <span class="kw">struct</span> <span class="type">riscv_iommu_device</span> *iommu;
+    <span class="kw">void</span> *base;                 <span class="cmt">// ring buffer 内核指针</span>
+    <span class="type">dma_addr_t</span> phys;            <span class="cmt">// ring buffer 物理地址</span>
+    <span class="type">u16</span> qbr;                    <span class="cmt">// 基址寄存器偏移</span>
+    <span class="type">u16</span> qcr;                    <span class="cmt">// 控制/状态寄存器偏移</span>
+    <span class="type">u8</span>  qid;                    <span class="cmt">// 队列号（同 RISCV_IOMMU_INTR_XX）</span>
+};</code></pre>
+<h3 id="m2-c2">2.1 QUEUE_INIT 宏（:110–116）</h3>
+<pre><code>#define RISCV_IOMMU_QUEUE_INIT(q, name) <span class="kw">do</span> {                 \
+    <span class="kw">struct</span> <span class="type">riscv_iommu_queue</span> *_q = q;                        \
+    _q-&gt;qid  = RISCV_IOMMU_INTR_ ## name;                    \
+    _q-&gt;qbr  = RISCV_IOMMU_REG_ ## name ## B;                \
+    _q-&gt;qcr  = RISCV_IOMMU_REG_ ## name ## CSR;              \
+    _q-&gt;mask = _q-&gt;mask ?: (RISCV_IOMMU_DEF_ ## name ## _COUNT) - <span class="num">1</span>; \
+} <span class="kw">while</span> (<span class="num">0</span>)</code></pre>
+<p>宏展开后把每个队列的 <code>qid/qbr/qcr/mask</code> 一次性填好：</p>
+<table>
+<tr><th>队列</th><th>qid</th><th>qbr（基址）</th><th>qcr（CSR）</th><th>默认 mask</th></tr>
+<tr><td><code>cmdq</code></td><td><code>INTR_CQ</code>=0</td><td><code>CQB</code>=0x18</td><td><code>CQCSR</code>=0x48</td><td>8192-1=8191</td></tr>
+<tr><td><code>fltq</code></td><td><code>INTR_FQ</code>=1</td><td><code>FQB</code>=0x28</td><td><code>FQCSR</code>=0x4C</td><td>4096-1=4095</td></tr>
+</table>
+<h3 id="m2-c3">2.2 四个关键偏移宏（:119–122）</h3>
+<pre><code>#define Q_HEAD(q)  ((q)-&gt;qbr + (RISCV_IOMMU_REG_CQH - RISCV_IOMMU_REG_CQB)) <span class="cmt">// head 寄存器偏移</span>
+#define Q_TAIL(q)  ((q)-&gt;qbr + (RISCV_IOMMU_REG_CQT - RISCV_IOMMU_REG_CQB)) <span class="cmt">// tail 寄存器偏移</span>
+#define Q_ITEM(q, index) ((q)-&gt;mask &amp; (index))                             <span class="hl-amber">// 无界 → 环形下标</span>
+#define Q_IPSR(q)  BIT((q)-&gt;qid)                                           <span class="cmt">// 该队列在 IPSR 里的 pending 位</span></code></pre>
+<div class="callout">
+<div class="title">head/tail 偏移对所有队列相同</div>
+<p class="lead" style="margin:0"><code>Q_HEAD/Q_TAIL</code> 用 <code>CQH-CQB / CQT-CQB</code> 这个固定差值加到各自 <code>qbr</code> 上——三个队列（CQ/FQ/PQ）的基址寄存器到 head/tail 寄存器的间距在硬件里是统一设计的。</p>
+</div>
+<h3 id="m2-c4">2.3 无界 shadow 索引 —— 核心设计</h3>
+<p class="lead">软件里维护的 <code>head/tail/prod</code> <b>永不按队列长度回绕</b>，只有读写硬件寄存器、访问 ring buffer 时才 <code>&amp; mask</code> 转成环形下标。这样「占用了多少条」就变成一句整数减法。</p>
+<table>
+<tr><th></th><th>硬件寄存器 / 内存下标</th><th>软件 shadow 索引</th></tr>
+<tr><td>回绕周期</td><td><code>mask+1</code>（默认 8192 / 4096 条）</td><td><code>2³²</code>（约 42.9 亿次）</td></tr>
+<tr><td>谁在绕</td><td>硬件 head/tail、<code>&amp; mask</code> 后的下标</td><td><code>atomic_t</code> 这个 32 位变量本身</td></tr>
+</table>
+<table>
+<tr><th>判断</th><th>有界索引（经典环形）</th><th>无界 shadow（本驱动）</th></tr>
+<tr><td>占用条目数</td><td><code>(tail - head + size) % size</code></td><td><code>tail - head</code></td></tr>
+<tr><td>是否有空位</td><td><code>((tail + 1) &amp; mask) != head</code></td><td><code>(prod - head) &lt; mask</code></td></tr>
+<tr><td>是否已完成</td><td>需处理回绕</td><td><code>(int)(cons - index) &gt; 0</code></td></tr>
+</table>
+<div class="callout amber">
+<div class="title">正确性靠「距离 &lt; 2³¹」，不是「永不溢出」</div>
+<p class="lead" style="margin:0"><code>atomic_t</code> 是 32 位，索引撑到 2³² 终究会溢出回绕。但驱动所有关键判断都用<b>有符号差值</b>（如 <code>(int)(tail - head)</code>），利用模 2³² 补码算术——只要 <code>tail</code> 与 <code>head</code> 的真实距离 &lt; 2³¹，即便两者本身溢出绕回，差值依然正确。这个不变量由队列容量上限保证（代码注释 <code>should be &lt;= INT_MAX</code>，默认仅 8192/4096 条）。</p>
+</div>
+<h3 id="m2-c5">2.4 queue_alloc 四件事（:132–196）</h3>
+<ol>
+<li><b>WARL 探测上限</b>：写 <code>LOG2SZ</code> 全 1（0x1F），读回硬件合法化值，取 <code>min(软件默认, 硬件上限)</code>。</li>
+<li><b>定 ring buffer 位置</b>：读回的 base 若 <code>PPN</code> 非零 → 硬件固定 IO 地址，<code>devm_ioremap</code> 映射；否则软件 <code>riscv_iommu_get_pages</code> 分配连续内存。</li>
+<li><b>回写并验证</b>：<code>phys_to_ppn(phys) | LOG2SZ</code> 写回，读回比对，不等则 <code>-ENODEV</code>。</li>
+<li><b>更新 mask</b>：<code>mask = (2U &lt;&lt; logsz) - 1</code>。</li>
+</ol>
+<h3 id="m2-c6">2.5 硬中断 queue_ipsr（:199–207）与 queue_vec（:209–213）</h3>
+<pre><code><span class="kw">static</span> <span class="type">irqreturn_t</span> riscv_iommu_queue_ipsr(<span class="kw">int</span> irq, <span class="kw">void</span> *data)
+{
+    <span class="kw">if</span> (riscv_iommu_readl(queue-&gt;iommu, RISCV_IOMMU_REG_IPSR) &amp; Q_IPSR(queue))
+        <span class="kw">return</span> IRQ_WAKE_THREAD;   <span class="cmt">// 命中本队列 pending 位 → 唤醒线程</span>
+    <span class="kw">return</span> IRQ_NONE;
+}
+
+<span class="kw">static</span> <span class="kw">int</span> riscv_iommu_queue_vec(<span class="kw">struct</span> <span class="type">riscv_iommu_device</span> *iommu, <span class="kw">int</span> n)
+{
+    <span class="kw">return</span> (iommu-&gt;icvec &gt;&gt; (n * <span class="num">4</span>)) &amp; RISCV_IOMMU_ICVEC_CIV;  <span class="cmt">// 复用 CIV 掩码取向量</span>
+}</code></pre>
+<p>硬中断只做一件事：读 <code>IPSR</code> 判断是不是本队列的中断，是就 <code>IRQ_WAKE_THREAD</code> 唤醒下半部线程，不是就 <code>IRQ_NONE</code>（共享中断场景）。<code>queue_vec</code> 从 <code>icvec</code> 里按 <code>qid*4</code> 位偏移取该队列对应的中断向量。</p>
+<h3 id="m2-c7">2.6 queue_enable 六件事（:221–281）</h3>
+<ol>
+<li>取中断号 <code>irq = iommu-&gt;irqs[queue_vec(qid)]</code>；为 0 则 <code>-ENODEV</code>（<b>驱动不实现轮询，必须有中断</b>）。</li>
+<li><code>request_threaded_irq</code> 注册：硬中断 <code>queue_ipsr</code> + 线程 handler，<code>IRQF_ONESHOT | IRQF_SHARED</code>。</li>
+<li><b>清空队列</b>——方向差异在此：命令队列写 <code>tail=0</code>，fault 队列写 <code>head=0</code>。</li>
+<li>写 CSR 使能：<code>QUEUE_ENABLE | QUEUE_INTR_ENABLE | QUEUE_MEM_FAULT</code>。</li>
+<li>轮询等 <code>BUSY</code> 清除（超时 150ms）。</li>
+<li>校验 <code>ACTIVE</code> 置位且无 <code>BUSY/MEM_FAULT</code>，否则写 0 停队列、<code>free_irq</code>、返回 <code>-EBUSY</code>；最后清 pending 中断。</li>
+</ol>
+<h3 id="m2-c8">2.7 queue_disable（:287–306）</h3>
+<p>使能的逆过程：<code>free_irq</code> → 写 CSR 0 → 轮询等 <code>BUSY</code> 清除 → 若 <code>ACTIVE|BUSY</code> 未清则 <code>dev_err</code> 报错但继续 → 置 <code>queue-&gt;iommu = NULL</code>。</p>
+<h3 id="m2-c9">2.8 消费侧：consume / release / cons（:312–364）</h3>
+<pre><code><span class="kw">static</span> <span class="kw">int</span> riscv_iommu_queue_consume(<span class="kw">struct</span> <span class="type">riscv_iommu_queue</span> *queue, <span class="kw">unsigned</span> <span class="kw">int</span> *index)
+{
+    head = atomic_read(&amp;queue-&gt;head);  tail = atomic_read(&amp;queue-&gt;tail);
+    last = Q_ITEM(queue, tail);
+    available = (<span class="kw">int</span>)(tail - head);                 <span class="cmt">// 先用 shadow 算</span>
+    *index = head;
+    <span class="kw">if</span> (available &gt; <span class="num">0</span>) <span class="kw">return</span> available;
+
+    <span class="cmt">// shadow 里没了，才读硬件 tail（有界），有变化则更新 shadow tail</span>
+    riscv_iommu_readl_timeout(queue-&gt;iommu, Q_TAIL(queue), tail,
+                              (tail &amp; ~queue-&gt;mask) == <span class="num">0</span>, <span class="num">0</span>, QUEUE_TIMEOUT);
+    <span class="kw">if</span> (tail == last) <span class="kw">return</span> <span class="num">0</span>;
+    <span class="kw">return</span> (<span class="kw">int</span>)(atomic_add_return((tail - last) &amp; queue-&gt;mask, &amp;queue-&gt;tail) - head);
+}</code></pre>
+<pre><code><span class="kw">static</span> <span class="kw">void</span> riscv_iommu_queue_release(<span class="kw">struct</span> <span class="type">riscv_iommu_queue</span> *queue, <span class="kw">int</span> count)
+{
+    <span class="kw">const</span> <span class="kw">unsigned</span> <span class="kw">int</span> head = atomic_add_return(count, &amp;queue-&gt;head);
+    riscv_iommu_writel(queue-&gt;iommu, Q_HEAD(queue), Q_ITEM(queue, head));  <span class="cmt">// 回写硬件 head</span>
+}
+
+<span class="cmt">// 读硬件 head（有界），换算回无界 consumer</span>
+<span class="kw">static</span> <span class="kw">unsigned</span> <span class="kw">int</span> riscv_iommu_queue_cons(<span class="kw">struct</span> <span class="type">riscv_iommu_queue</span> *queue)
+{
+    cons = atomic_read(&amp;queue-&gt;head);
+    last = Q_ITEM(queue, cons);                       <span class="cmt">// 无界 → 有界快照</span>
+    riscv_iommu_readl_timeout(queue-&gt;iommu, Q_HEAD(queue), head,
+                              !(head &amp; ~queue-&gt;mask), <span class="num">0</span>, QUEUE_TIMEOUT);
+    <span class="kw">return</span> cons + ((head - last) &amp; queue-&gt;mask);      <span class="hl-amber">// 有界差值 → 加回无界</span>
+}</code></pre>
+<p class="lead">回绕处理被收敛到<strong>唯一躲不掉的地方</strong>——读硬件寄存器（硬件索引是有界的）。假设 <code>last=6</code>，硬件 head 绕回成 <code>1</code>：<code>(1 - 6) &amp; 7 = (-5) &amp; 7 = 3</code>，正确算出硬件又消费了 3 条。</p>
+<h3 id="m2-c10">2.9 queue_wait 与 queue_wait_for_space（:367–419）</h3>
+<pre><code><span class="kw">static</span> <span class="kw">int</span> riscv_iommu_queue_wait(<span class="kw">struct</span> <span class="type">riscv_iommu_queue</span> *queue,
+                                  <span class="kw">unsigned</span> <span class="kw">int</span> index, <span class="kw">unsigned</span> <span class="kw">int</span> timeout_us)
+{
+    cons = atomic_read(&amp;queue-&gt;head);
+    flags = CQCSR_CQMF | CQCSR_CMD_TO | CQCSR_CMD_ILL;
+    <span class="kw">if</span> ((<span class="kw">int</span>)(cons - index) &gt; <span class="num">0</span>) <span class="kw">return</span> <span class="num">0</span>;            <span class="cmt">// 已被消费</span>
+    <span class="kw">return</span> readx_poll_timeout(riscv_iommu_queue_cons, queue, cons,
+            (readl(queue-&gt;iommu, queue-&gt;qcr) &amp; flags) ||
+            (<span class="kw">int</span>)(cons - index) &gt; <span class="num">0</span>, <span class="num">0</span>, timeout_us);  <span class="cmt">// 轮询硬件 head 或 CSR 报错</span>
+}</code></pre>
+<p><code>queue_wait</code> 的退出条件二选一：<b>消费者索引越过提交点</b>，或 <b>CSR 报错</b>（<code>CQMF/CMD_TO/CMD_ILL</code>）。<code>queue_wait_for_space</code> 在队列满时轮询硬件 head 等待空位，并在 <code>raw_spin_lock</code> 保护下重读 <code>hw_head</code> 推进 shadow head——注释特别强调必须<strong>在锁内重读</strong>，否则用锁前的旧快照可能因回绕把 shadow head 推进到硬件还没消费的条目。</p>
+<h3 id="m2-c11">2.10 queue_send 入队四步（:422–476）</h3>
+<pre><code><span class="cmt">// ① 锁内预留槽位（满了 wait_for_space 自旋）</span>
+<span class="kw">for</span> (;;) {
+    raw_spin_lock_irqsave(&amp;queue-&gt;lock, flags);
+    prod = atomic_read(&amp;queue-&gt;tail);  head = atomic_read(&amp;queue-&gt;head);
+    <span class="kw">if</span> ((prod - head) &lt; queue-&gt;mask) <span class="kw">break</span>;
+    head = Q_ITEM(queue, head);
+    raw_spin_unlock_irqrestore(&amp;queue-&gt;lock, flags);
+    <span class="kw">if</span> (riscv_iommu_queue_wait_for_space(queue, head)) <span class="kw">goto</span> err_busy;
+}
+<span class="cmt">// ② 写入 ring buffer（此刻 tail 未动，IOMMU 看不到）</span>
+memcpy(queue-&gt;base + Q_ITEM(queue, prod) * entry_size, entry, entry_size);
+<span class="cmt">// ③ dma_wmb()：数据先于 tail 门铃可见</span>
+<span class="hl-amber">dma_wmb();</span>
+riscv_iommu_writel(queue-&gt;iommu, Q_TAIL(queue), Q_ITEM(queue, prod + <span class="num">1</span>));
+<span class="cmt">// ④ mmiowb() 确保门铃落地，之后才更新 shadow</span>
+<span class="hl-amber">mmiowb();</span>
+atomic_set(&amp;queue-&gt;tail, prod + <span class="num">1</span>);
+atomic_set(&amp;queue-&gt;prod, prod + <span class="num">1</span>);</code></pre>
+<p>核心是「先写数据、再敲门铃」，中间两道屏障钉死顺序：<code>dma_wmb()</code>（<code>fence w,w</code>）保证 <code>memcpy</code> 写入先于 tail 门铃；<code>mmiowb()</code>（<code>fence o,w</code>）保证门铃写真正落地之后才更新内存 shadow 计数。</p>
+</section><section class="card" id="m3">
+<h2><span class="no">3</span>命令队列 CQ <span class="tag amber">iommu.c:478–536</span></h2>
+<p class="ref">命令格式 <code>iommu-bits.h:459–462</code> · cmdq_process <code>:483–508</code> · cmd_send <code>:511–515</code> · cmd_sync <code>:518–536</code></p>
+<h3 id="m3-c1">3.0 命令格式（iommu-bits.h:459–462）</h3>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_command</span> { <span class="type">u64</span> dword0; <span class="type">u64</span> dword1; };</code></pre>
+<p>一条命令 <strong>16 字节</strong>，两个 64 位字段。 <code>dword0[6:0]</code> 是 opcode（命令大类），<code>dword0[9:7]</code> 是 func（子功能）。规范定义 4 类 opcode：</p>
+<table>
+<tr><th>opcode</th><th>命令</th><th>作用</th><th>func</th></tr>
+<tr><td>1</td><td>IOTINVAL</td><td>页表/IOTLB 缓存失效</td><td>VMA / GVMA</td></tr>
+<tr><td>2</td><td>IOFENCE</td><td>命令队列栅栏</td><td>C</td></tr>
+<tr><td>3</td><td>IODIR</td><td>目录缓存失效</td><td>INVAL_DDT / INVAL_PDT</td></tr>
+<tr><td>4</td><td>ATS</td><td>PCIe ATS</td><td>INVAL / PRGR</td></tr>
+</table>
+<p>本模块只涉及 <strong>IOFENCE.C</strong>，构造函数在 <code>iommu-bits.h:766–772</code>：</p>
+<pre><code><span class="kw">static</span> <span class="kw">inline</span> <span class="kw">void</span> riscv_iommu_cmd_iofence(<span class="kw">struct</span> <span class="type">riscv_iommu_command</span> *cmd)
+{
+    cmd-&gt;dword0 = FIELD_PREP(CMD0_OPCODE, CMD_IOFENCE_OPCODE) |
+                  FIELD_PREP(CMD0_FUNC, CMD_IOFENCE_FUNC_C) |
+                  CMD0_IOFENCE_PR | CMD0_IOFENCE_PW;   <span class="hl-amber">// 关键：PR | PW</span>
+    cmd-&gt;dword1 = <span class="num">0</span>;
+}</code></pre>
+<p><code>PR</code>（读栅栏）+ <code>PW</code>（写栅栏）同时置位，表示这条 fence 要等此前所有命令的<strong>读/写副作用</strong>都完成才算执行完——一个完整同步点。</p>
+<h3 id="m3-c2">3.1 cmdq_process（:483–508）—— CQ 中断 thread</h3>
+<p>这是命令队列注册的中断处理函数。核心要理解的是：<strong>这个中断不负责通知「命令完成」，只负责上报错误</strong>。</p>
+<pre><code>ctrl = riscv_iommu_readl(iommu, queue-&gt;qcr);
+<span class="kw">if</span> (ctrl &amp; (CQCSR_CQMF | CQCSR_CMD_TO | CQCSR_CMD_ILL | CQCSR_FENCE_W_IP)) {
+    riscv_iommu_writel(iommu, queue-&gt;qcr, ctrl);   <span class="cmt">// 回写清除错误位</span>
+    dev_warn(...);                                  <span class="cmt">// 打印 fault/timeout/illegal/fence_w_ip</span>
+}
+riscv_iommu_writel(iommu, RISCV_IOMMU_REG_IPSR, Q_IPSR(queue));  <span class="cmt">// 清 CIP</span></code></pre>
+<p>四个错误位（<code>iommu-bits.h:152–161</code>）：<code>CQMF</code>（内存 fault）、<code>CMD_TO</code>（命令执行超时）、<code>CMD_ILL</code>（非法命令）、<code>FENCE_W_IP</code>（fence 写 pending）。</p>
+<div class="callout">
+<div class="title">设计取舍</div>
+<p class="lead" style="margin:0">正常命令完成走<strong>软件轮询 head 寄存器</strong>（见 3.3 的 <code>queue_wait</code>），不走中断。中断只在错误发生时「推」一把，避免轮询周期漏掉错误位。所以这个 thread 里基本是错误处理 + 一个 <code>/* Placeholder */</code>，完整 RAS 恢复尚未实现。</p>
+</div>
+<h3 id="m3-c3">3.2 cmd_send（:511–515）</h3>
+<pre><code>riscv_iommu_queue_send(&amp;iommu-&gt;cmdq, cmd, <span class="kw">sizeof</span>(*cmd), <span class="kw">NULL</span>);</code></pre>
+<p>一行包装，把命令塞进 cmdq。<strong>fire-and-forget</strong>：不等待、不返回完成状态（<code>out_prod=NULL</code>）。所有需要「发完确认」的场景都用下面的 <code>cmd_sync</code>。</p>
+<h3 id="m3-c4">3.3 cmd_sync（:518–536）—— 同步栅栏</h3>
+<pre><code>riscv_iommu_cmd_iofence(&amp;cmd);                          <span class="cmt">// 构造 IOFENCE.C</span>
+ret = riscv_iommu_queue_send(&amp;cmdq, &amp;cmd, <span class="kw">sizeof</span>, &amp;prod); <span class="cmt">// 发送，记下 prod 索引</span>
+<span class="kw">if</span> (!timeout_us) <span class="kw">return</span>;                                <span class="cmt">// timeout=0 → 发了不等</span>
+<span class="kw">if</span> (riscv_iommu_queue_wait(&amp;cmdq, prod, timeout_us))     <span class="cmt">// 轮询等这条 fence 被消费</span>
+    dev_err_once(...);</code></pre>
+<p><strong>语义链</strong>：命令队列是 FIFO 且硬件顺序执行 → 只要 <strong>IOFENCE.C 这条命令被硬件消费</strong>，就等价于它之前所有命令（如 IOTINVAL、IODIR.INVAL_DDT）都已执行完。这就是「失效 + 同步」两步里同步那一步的标准写法。</p>
+<p><code>queue_wait</code> 的完成条件（:367–383）：<code>(int)(cons - index) &gt; 0</code>（消费者已越过发送时的 prod），或 CQCSR 出现 <code>CQMF/CMD_TO/CMD_ILL</code> 错误。</p>
+<div class="callout amber">
+<div class="title">关键细节：cons 读的是硬件 head</div>
+<p class="lead" style="margin:0"><code>cons</code> 来自 <code>riscv_iommu_queue_cons</code>（:352–364），它读的是<strong>硬件 head 寄存器</strong>，不是软件 shadow head。原因是 CQ 的消费者是硬件——硬件每执行完一条命令就推进 CQH；软件 shadow head 只服务于 FQ（软件自己消费 fault 记录）那一侧，两者方向相反。</p>
+</div>
+</section><section class="card" id="m4">
+<h2><span class="no">4</span>Fault 队列 FQ <span class="tag red">iommu.c:538–588</span></h2>
+<p class="ref">FQ record 格式 <code>iommu-bits.h:543–548</code> · fault <code>:542–553</code> · fltq_process <code>:556–588</code></p>
+<h3 id="m4-c1">4.0 FQ record 格式（iommu-bits.h:543–548）</h3>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_fq_record</span> {
+    <span class="type">u64</span> hdr;        <span class="cmt">// 固定头部：cause + 设备/进程 id + 事务类型</span>
+    <span class="type">u64</span> _reserved;
+    <span class="type">u64</span> iotval;     <span class="cmt">// 事务类型/cause 相关的地址信息</span>
+    <span class="type">u64</span> iotval2;    <span class="cmt">// cause 相关的第二信息</span>
+};</code></pre>
+<p>每条 <strong>32 字节</strong>。<code>hdr</code> 位域（:551–556）：</p>
+<table>
+<tr><th>字段</th><th>位</th><th>含义</th></tr>
+<tr><td>CAUSE</td><td>[11:0]</td><td>fault/event 原因码（表 11）</td></tr>
+<tr><td>PID</td><td>[31:12]</td><td>进程 ID</td></tr>
+<tr><td>PV</td><td>[32]</td><td>PID 有效</td></tr>
+<tr><td>PRIV</td><td>[33]</td><td>特权级</td></tr>
+<tr><td>TTYP</td><td>[39:34]</td><td>事务类型（表 12）</td></tr>
+<tr><td>DID</td><td>[63:40]</td><td>设备 ID</td></tr>
+</table>
+<h3 id="m4-c2">4.1 riscv_iommu_fault（:542–553）</h3>
+<pre><code>err   = FIELD_GET(FQ_HDR_CAUSE, event-&gt;hdr);
+devid = FIELD_GET(FQ_HDR_DID, event-&gt;hdr);
+<span class="kw">if</span> (err)
+    dev_warn_ratelimited(iommu-&gt;dev, <span class="str">"Fault %d devid: 0x%x iotval: %llx iotval2: %llx\n"</span>,
+                         err, devid, event-&gt;iotval, event-&gt;iotval2);</code></pre>
+<p>两个要点：<code>_ratelimited</code> 限速（fault 可能被设备风暴式触发，不限速会刷爆 dmesg）；<strong>只报告不处理</strong>（注释 <code>Placeholder ... report only</code>）。</p>
+<p>值得把 cause 编码和驱动前面的注释对上号（<code>iommu-bits.h:594–625</code> 节选）：</p>
+<table>
+<tr><th>cause</th><th>含义</th></tr>
+<tr><td>1 / 5 / 7</td><td>取指/读/写 访问 fault</td></tr>
+<tr><td>256</td><td><code>DMA_DISABLED</code> — 入站事务被禁</td></tr>
+<tr><td>257 / 258 / 259</td><td>DDT 加载 fault / <strong>DDT 无效</strong> / DDT 配置错</td></tr>
+<tr><td>260</td><td><code>TTYP_BLOCKED</code> — 事务类型被禁止</td></tr>
+<tr><td>265–267</td><td>PDT 相关</td></tr>
+</table>
+<p>其中 <strong>258 = DDT_INVALID</strong> 正是模块 ⑨ 里 blocking domain 注释说的「翻译请求将以 #258 fault」的那个值——blocking domain 把设备上下文（DC）置无效，设备发起翻译时硬件就报这个 cause。</p>
+<h3 id="m4-c3">4.2 fltq_process（:556–588）—— FQ 中断 thread</h3>
+<pre><code>events = (<span class="kw">struct</span> <span class="type">riscv_iommu_fq_record</span> *)queue-&gt;base;
+
+riscv_iommu_writel(iommu, RISCV_IOMMU_REG_IPSR, Q_IPSR(queue));  <span class="cmt">// ① 清 FIP</span>
+
+<span class="kw">do</span> {
+    cnt = riscv_iommu_queue_consume(queue, &amp;idx);                 <span class="cmt">// ② 读硬件 tail，算可用条数</span>
+    <span class="kw">for</span> (len = <span class="num">0</span>; len &lt; cnt; idx++, len++)
+        riscv_iommu_fault(iommu, &amp;events[Q_ITEM(queue, idx)]);    <span class="cmt">// ③ 逐条上报</span>
+    riscv_iommu_queue_release(queue, cnt);                        <span class="cmt">// ④ 推进硬件 head</span>
+} <span class="kw">while</span> (cnt &gt; <span class="num">0</span>);                                               <span class="cmt">// ⑤ 循环直到清空</span>
+
+ctrl = riscv_iommu_readl(iommu, queue-&gt;qcr);                       <span class="cmt">// ⑥ 清 FQMF/FQOF 错误</span>
+<span class="kw">if</span> (ctrl &amp; (FQCSR_FQMF | FQCSR_FQOF)) { ... dev_warn(...); }</code></pre>
+<ol>
+<li><b>方向反转</b>：CQ 是软件→硬件（软件 producer、硬件 consumer）；FQ 是硬件→软件（<strong>硬件 producer 写 tail，软件 consumer 推进 head</strong>）。所以消费函数用的是 <code>queue_consume</code>（读硬件 tail）而不是 <code>queue_cons</code>（读硬件 head）。</li>
+<li><b><code>queue_consume</code></b> 先看软件 shadow 里还有没有剩余（<code>tail - head</code>），没有才去读硬件 tail 寄存器，把硬件最新 producer 同步进 shadow tail，再算差值。</li>
+<li><b><code>do-while (cnt &gt; 0)</code> 循环</b>：处理完一批后，处理期间硬件可能又写了新记录，所以要再 <code>consume</code> 一次，直到真的读空。这样一次中断把积压的 fault 全消化掉。</li>
+<li><b><code>queue_release</code></b> 推进<strong>硬件 head 寄存器</strong>——告诉硬件「这些记录我读完了，ring 空间可回收」。硬件靠 head/tail 间距判断 FQ 是否满、是否会溢出（<code>FQOF</code>）。</li>
+<li><b>溢出语义</b>：<code>FQOF</code>（fault queue overflow）是 FQ 特有错误位（CQ 没有，CQ 是软件主导不会溢出）。一旦溢出，说明 fault 产生速度超过软件消费速度，有记录被丢弃。</li>
+</ol>
+<h3 id="m4-c4">4.3 三个队列方向一览</h3>
+<table>
+<tr><th>队列</th><th>producer</th><th>consumer</th><th>软件动作</th><th>完成/就绪判定</th></tr>
+<tr><td>CQ</td><td>软件</td><td>硬件</td><td>软件写 tail；轮询<strong>硬件 head</strong></td><td><code>queue_cons</code> / <code>queue_wait</code></td></tr>
+<tr><td>FQ</td><td>硬件</td><td>软件</td><td>读<strong>硬件 tail</strong>；推进硬件 head</td><td><code>queue_consume</code> / <code>queue_release</code></td></tr>
+<tr><td>PQ</td><td>硬件</td><td>软件</td><td>同 FQ（本驱动未启用）</td><td>—</td></tr>
+</table>
+</section><section class="card" id="m5">
+<h2><span class="no">5</span>设备目录 DDT / DC <span class="tag amber">iommu.c:590–833</span></h2>
+<p class="ref">DC 结构 <code>iommu-bits.h:326–335</code> · get_dc <code>:591–677</code> · disable <code>:683–691</code> · iodir_alloc <code>:700–740</code> · set_mode <code>:747–833</code></p>
+<h3 id="m5-c1">5.0 数据结构铺垫</h3>
+<p><strong>DC（Device Context）</strong>是 DDT 的叶子节点（<code>iommu-bits.h:326–335</code>），两种格式：</p>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_dc</span> {
+    <span class="type">u64</span> tc;          <span class="cmt">// 翻译控制（含 V 有效位）</span>
+    <span class="type">u64</span> iohgatp;     <span class="cmt">// 第二级 G-stage 上下文</span>
+    <span class="type">u64</span> ta;          <span class="cmt">// 翻译属性（含 PSCID[31:12]）</span>
+    <span class="type">u64</span> fsc;         <span class="cmt">// 第一级上下文（IOSATP 或 PDTP）</span>
+    <span class="type">u64</span> msiptp;      <span class="cmt">// ↓ 以下 4 字段仅 extended(MSI_FLAT) 格式存在</span>
+    <span class="type">u64</span> msi_addr_mask;
+    <span class="type">u64</span> msi_addr_pattern;
+    <span class="type">u64</span> _reserved;
+};</code></pre>
+<ul>
+<li><b>base 格式</b>（无 MSI_FLAT 能力）：DC = 前 4 个 64 位 = 32 字节</li>
+<li><b>extended 格式</b>（有 MSI_FLAT）：DC = 8 个 64 位 = 64 字节</li>
+</ul>
+<p>这个差异是 <code>get_dc</code> 里指针算术的关键。</p>
+<h3 id="m5-c2">5.1 get_dc（:591–677）—— devid → DC 的查找/按需分配</h3>
+<p>这是翻译入口的核心：给定 <code>devid</code>，返回它对应的 DC 指针，目录层级不存在就<strong>现场建</strong>。</p>
+<h4 id="m5-c3">① DDI 位分配（:617–625）</h4>
+<pre><code><span class="kw">if</span> (base_format) { ddi_bits[<span class="num">0</span>]=<span class="num">7</span>; ddi_bits[<span class="num">1</span>]=<span class="num">16</span>; ddi_bits[<span class="num">2</span>]=<span class="num">24</span>; }
+<span class="kw">else</span>             { ddi_bits[<span class="num">0</span>]=<span class="num">6</span>; ddi_bits[<span class="num">1</span>]=<span class="num">15</span>; ddi_bits[<span class="num">2</span>]=<span class="num">24</span>; }</code></pre>
+<p><code>ddi_bits[]</code> 存的是<strong>累积位宽</strong>，差值就是每级的索引位宽。base 格式 7/9/8 切分，extended 6/9/9 切分——最高层凑满 24 位 devid 空间。</p>
+<h4 id="m5-c4">② 层级范围校验（:628–630）</h4>
+<p><code>depth = ddt_mode - 1LVL</code>，devid 必须落在当前层级能表达的范围内，否则 <code>NULL</code>。</p>
+<h4 id="m5-c5">③ 非叶子节点遍历 + 按需建表（:633–667）</h4>
+<pre><code><span class="kw">for</span> (ddtp = iommu-&gt;ddt_root; depth-- &gt; <span class="num">0</span>;) {
+    <span class="kw">const</span> <span class="kw">int</span> split = ddi_bits[depth];
+    ddtp += (devid &gt;&gt; split) &amp; <span class="num">0x1FF</span>;      <span class="cmt">// 取 devid 对应段做索引</span>
+    <span class="kw">do</span> {
+        ddt = READ_ONCE(*(<span class="kw">unsigned</span> <span class="kw">long</span> *)ddtp);
+        <span class="kw">if</span> (ddt &amp; RISCV_IOMMU_DDTE_V) {    <span class="cmt">// 该级已存在</span>
+            ddtp = __va(ppn_to_phys(ddt)); <span class="cmt">// 跳到下一级目录页</span>
+            <span class="kw">break</span>;
+        }
+        ptr = riscv_iommu_get_pages(iommu, SZ_4K);   <span class="cmt">// 分配新一级</span>
+        new = phys_to_ppn(__pa(ptr)) | RISCV_IOMMU_DDTE_V;
+        old = cmpxchg_relaxed((<span class="kw">unsigned</span> <span class="kw">long</span> *)ddtp, ddt, new);
+        <span class="kw">if</span> (old == ddt) { ddtp = (<span class="type">u64</span> *)ptr; <span class="kw">break</span>; }  <span class="cmt">// 写入成功</span>
+        riscv_iommu_free_pages(iommu, ptr);            <span class="cmt">// 竞争，重试</span>
+    } <span class="kw">while</span> (<span class="num">1</span>);
+}</code></pre>
+<ul>
+<li>非叶子节点每个就是一个 64 位 <strong>DDTE</strong>（<code>DDTE_PPN | DDTE_V</code>），存下一级目录页的物理页号。</li>
+<li>用 <code>cmpxchg_relaxed</code> 原子地「抢占」未建节点：多个 CPU 并发 <code>get_dc</code> 同一 devid 时，只有一个能写入，其余释放自己分配的页后重读重试。这是无锁并发建目录表的标准写法。</li>
+<li><code>__va(ppn_to_phys(ddt))</code>：把 DDTE 里的 PPN 还原成物理地址再转内核虚拟地址。</li>
+</ul>
+<h4 id="m5-c6">④ 叶子节点定位（:674）</h4>
+<pre><code>ddtp += (devid &amp; ((<span class="num">64</span> &lt;&lt; base_format) - <span class="num">1</span>)) &lt;&lt; (<span class="num">3</span> - base_format);
+<span class="kw">return</span> (<span class="kw">struct</span> <span class="type">riscv_iommu_dc</span> *)ddtp;</code></pre>
+<p>这是最容易看晕的一行，拆开（<code>ddtp</code> 是 <code>u64 *</code>，<code>ddtp[n]</code> 访问第 n 个 u64）：</p>
+<table>
+<tr><th></th><th>base 格式</th><th>extended 格式</th></tr>
+<tr><td><code>base_format</code></td><td>true (1)</td><td>false (0)</td></tr>
+<tr><td>DC 大小</td><td>4 u64 = 32 B</td><td>8 u64 = 64 B</td></tr>
+<tr><td><code>3 - base_format</code> = log2(DC/u64)</td><td>2</td><td>3</td></tr>
+<tr><td><code>64 &lt;&lt; base_format</code> = 每页 DC 数</td><td>128</td><td>64</td></tr>
+</table>
+<p>所以 <code>(devid &amp; (每页DC数-1)) &lt;&lt; log2(DC大小)</code> = 页内第几个 DC × DC 字节偏移。注释里那句「base 是 4×64bits、extended 是 8×64bits，hence the <code>(3 - base_format)</code>」说的就是这个。</p>
+<h3 id="m5-c7">5.2 riscv_iommu_disable（:683–691）</h3>
+<pre><code>riscv_iommu_writeq(iommu, REG_DDTP, FIELD_PREP(DDTP_MODE, MODE_BARE));  <span class="cmt">// 切透传</span>
+riscv_iommu_writel(iommu, REG_CQCSR, <span class="num">0</span>);   <span class="cmt">// 关三个队列</span>
+riscv_iommu_writel(iommu, REG_FQCSR, <span class="num">0</span>);
+riscv_iommu_writel(iommu, REG_PQCSR, <span class="num">0</span>);</code></pre>
+<p>best-effort 关停：DDTP 切到 BARE（透传，所有设备直接放行），三个队列 CSR 写 0 停用。注释强调「不等待硬件响应」——用于 kexec/kdump 这类要快速收尾的场景。</p>
+<h3 id="m5-c8">5.3 riscv_iommu_read_ddtp（:693–698）</h3>
+<p>宏封装，轮询读 DDTP 直到 <code>BUSY</code> 位清除（10 us 步进，最长 10 s）。DDTP 是硬件可能异步更新的寄存器，读写前都要确认不忙。</p>
+<h3 id="m5-c9">5.4 riscv_iommu_iodir_alloc（:700–740）</h3>
+<p>分配 DDT 根目录页：mode 为 BARE/OFF 时，用 <strong>WARL 写回</strong>探测硬件是否指定了固定 DDT PPN（某些实现把目录表放在固定 MMIO 地址），有就 <code>devm_ioremap</code> 映射；否则（或硬件没给固定地址）<code>riscv_iommu_get_pages</code> 软件分配一页 4K 并清零。</p>
+<h3 id="m5-c10">5.5 riscv_iommu_iodir_set_mode（:747–833）—— WARL 降级协商</h3>
+<p>最复杂的一段，核心是处理 DDTP.mode 的 <strong>WARL 语义</strong>（Write-Any-Read-Legal：写进去的值硬件可能不支持，读回的是它实际接受的值）。</p>
+<pre><code><span class="cmt">// ① 禁止 xLVL → xLVL 直接迁移</span>
+<span class="kw">if</span> (当前 mode 是 xLVL 且 请求 mode 也是 xLVL) <span class="kw">return</span> -EINVAL;
+
+<span class="kw">do</span> {
+    rq_ddtp = FIELD_PREP(DDTP_MODE, rq_mode);
+    <span class="kw">if</span> (rq_mode &gt; BARE) rq_ddtp |= phys_to_ppn(iommu-&gt;ddt_phys);  <span class="cmt">// xLVL 才带根页 PPN</span>
+    riscv_iommu_writeq(iommu, REG_DDTP, rq_ddtp);
+    ddtp = riscv_iommu_read_ddtp(iommu);           <span class="cmt">// 读回看硬件接受没</span>
+    mode = FIELD_GET(DDTP_MODE, ddtp);
+    <span class="kw">if</span> (rq_mode == mode) <span class="kw">break</span>;                    <span class="cmt">// ② 接受，成功</span>
+    <span class="kw">if</span> (rq_mode &lt; 1LVL &amp;&amp; rq_ddtp != ddtp)         <span class="cmt">// ③ BARE/OFF 都没被接受 → 硬错误</span>
+        <span class="kw">return</span> -EINVAL;
+    <span class="kw">if</span> (mode &lt; 1LVL &amp;&amp; rq_mode &gt; 1LVL) {           <span class="cmt">// ④ 请求 xLVL 却被降到 BARE/OFF</span>
+        rq_mode--;                                  <span class="cmt">//    降一级重试</span>
+        <span class="kw">continue</span>;
+    }
+    <span class="kw">return</span> -EINVAL;                                 <span class="cmt">// ⑤ 全失败</span>
+} <span class="kw">while</span> (<span class="num">1</span>);
+
+iommu-&gt;ddt_mode = mode;
+<span class="cmt">// ⑥ 切完补失效：目录缓存 + TLB + fence</span>
+riscv_iommu_cmd_iodir_inval_ddt(&amp;cmd);  riscv_iommu_cmd_send(iommu, &amp;cmd);
+riscv_iommu_cmd_inval_vma(&amp;cmd);        riscv_iommu_cmd_send(iommu, &amp;cmd);
+riscv_iommu_cmd_sync(iommu, RISCV_IOMMU_IOTINVAL_TIMEOUT);</code></pre>
+<ul>
+<li><b>降级链</b>：初始化时传 <code>MODE_MAX</code>(=3LVL)，硬件不支持 3 级就回 BARE/OFF，驱动 <code>rq_mode--</code> 依次试 2LVL、1LVL，直到找到硬件支持的最大级数。</li>
+<li><b>迁移约束</b>：只允许 BARE/OFF ↔ xLVL，不允许 xLVL 之间直切（中间必须先退到 BARE/OFF），避免目录结构在半切换状态下被硬件解析。</li>
+<li><b>收尾失效</b>（⑥）：目录模式变了，硬件缓存的 DDT 翻译和 TLB 全要刷，所以 <code>IODIR.INVAL_DDT</code> + <code>IOTINVAL.VMA</code> + <code>IOFENCE.C</code> 三连——这是「软件失效顺序」在模式切换场景的复现。</li>
+</ul>
+</section><section class="card" id="m6">
+<h2><span class="no">6</span>domain 与 bond <span class="tag amber">iommu.c:835–943</span></h2>
+<p class="ref">domain/bond 结构 <code>:836–875</code> · bond_link <code>:877–905</code> · bond_unlink <code>:907–943</code></p>
+<h3 id="m6-c1">6.0 三个数据结构</h3>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_domain</span> {
+    <span class="kw">union</span> {
+        <span class="kw">struct</span> <span class="type">iommu_domain</span> domain;       <span class="cmt">// IOMMU core 视角</span>
+        <span class="kw">struct</span> <span class="type">pt_iommu_riscv_64</span> riscvpt; <span class="cmt">// generic_pt 库的 riscv64 页表</span>
+    };
+    <span class="kw">struct</span> <span class="type">list_head</span> bonds;   <span class="cmt">// 挂在这个 domain 上的设备</span>
+    <span class="type">spinlock_t</span> lock;          <span class="cmt">// 保护 bonds 链表</span>
+    <span class="kw">int</span> pscid;                <span class="cmt">// 进程软上下文 ID</span>
+};</code></pre>
+<p><strong>union 设计</strong>：<code>domain</code> 和 <code>riscvpt</code> 共享同一块内存。<code>riscvpt</code> 是 Linux <code>generic_pt</code> 页表库（<code>linux/generic_pt/iommu.h</code>）的 riscv64 实现，内嵌一个 <code>struct iommu_domain</code>。<code>PT_IOMMU_CHECK_DOMAIN(riscv_iommu_domain, riscvpt.iommu, domain)</code> 是<strong>编译期断言</strong>，保证 <code>riscvpt</code> 里的 iommu 成员和 union 里的 <code>domain</code> 在偏移上对齐，这样两个视角可以互换。<code>iommu_domain_to_riscv()</code> 用 <code>container_of</code> 反向取回外层结构。</p>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_info</span> { <span class="kw">struct</span> <span class="type">riscv_iommu_domain</span> *domain; };  <span class="cmt">// 设备当前挂的 domain</span>
+<span class="kw">struct</span> <span class="type">riscv_iommu_bond</span> {
+    <span class="kw">struct</span> <span class="type">list_head</span> list;
+    <span class="kw">struct</span> <span class="type">rcu_head</span> rcu;      <span class="cmt">// RCU 延迟释放</span>
+    <span class="kw">struct</span> <span class="type">device</span> *dev;
+};</code></pre>
+<p><strong>bond</strong> 是「domain ↔ 设备」的一条绑定记录。一个 domain 可被多个设备（可能跨多个 IOMMU）共享，每个 attachment 生成一条 bond。</p>
+<h3 id="m6-c2">6.1 bond_link（:877–905）</h3>
+<pre><code>bond = kzalloc_obj(*bond);
+bond-&gt;dev = dev;
+
+spin_lock(&amp;domain-&gt;lock);
+list_for_each(bonds, &amp;domain-&gt;bonds)
+    <span class="kw">if</span> (dev_to_iommu(list_entry(bonds, ...)-&gt;dev) == iommu)
+        <span class="kw">break</span>;                              <span class="cmt">// 找到第一个同 IOMMU 的节点</span>
+list_add_rcu(&amp;bond-&gt;list, bonds);           <span class="cmt">// 插到它前面</span>
+spin_unlock(&amp;domain-&gt;lock);
+
+smp_mb();                                   <span class="cmt">// 与 iotlb_inval 序列配对</span></code></pre>
+<div class="callout amber">
+<div class="title">核心不变式：bonds 链表按所属 IOMMU 分组连续排列</div>
+<p class="lead" style="margin:0"><code>list_add_rcu</code> 把新 bond 插在「第一个同 IOMMU 节点」之前，所以同一个 IOMMU 的 bond 永远聚成一段。这个不变式被后面两处依赖：<code>iotlb_inval</code>（模块 ⑦）遍历时只需 <code>if (iommu == prev) continue</code> 就能对同一 IOMMU 去重；<code>bond_unlink</code> 判断「是不是最后一个设备」时只需数同段里还剩几个。</p>
+</div>
+<p><code>kzalloc_obj(*bond)</code> 是内核较新的<strong>对象分配 API</strong>（等于 <code>kzalloc(sizeof(*bond))</code>）。</p>
+<h3 id="m6-c3">6.2 bond_unlink（:907–943）</h3>
+<pre><code>spin_lock(&amp;domain-&gt;lock);
+list_for_each_entry(bond, &amp;domain-&gt;bonds, list) {
+    <span class="kw">if</span> (found &amp;&amp; count) <span class="kw">break</span>;                 <span class="cmt">// 目标已找到且其他同段已数完 → 早退</span>
+    <span class="kw">else</span> <span class="kw">if</span> (bond-&gt;dev == dev) found = bond;   <span class="cmt">// 命中要删的 bond</span>
+    <span class="kw">else</span> <span class="kw">if</span> (dev_to_iommu(bond-&gt;dev) == iommu) count++;  <span class="cmt">// 数同 IOMMU 的其他 bond</span>
+}
+<span class="kw">if</span> (found) list_del_rcu(&amp;found-&gt;list);
+spin_unlock(&amp;domain-&gt;lock);
+kfree_rcu(found, rcu);                          <span class="cmt">// RCU 延迟释放</span>
+
+<span class="kw">if</span> (!count) {                                   <span class="cmt">// 这是该 domain 在此 IOMMU 的最后一个设备</span>
+    riscv_iommu_cmd_inval_vma(&amp;cmd);
+    riscv_iommu_cmd_inval_set_pscid(&amp;cmd, domain-&gt;pscid);  <span class="cmt">// PSCV=1, PSCID</span>
+    riscv_iommu_cmd_send(iommu, &amp;cmd);
+    riscv_iommu_cmd_sync(iommu, RISCV_IOMMU_IOTINVAL_TIMEOUT);
+}</code></pre>
+<ol>
+<li><b><code>count</code> 的精确语义</b>：数的是「同一 IOMMU 下、<strong>除 found 之外</strong>的其他 bond」。所以 <code>!count</code> = 删掉这个之后，该 IOMMU 上再没有设备挂这个 domain。</li>
+<li><b>为什么 <code>!count</code> 要整体失效</b>：最后一个设备解绑后，这个 IOMMU 的 IOTLB 里可能还残留着该 domain 的 <code>PSCID</code> 翻译缓存。此时没有设备再引用它，必须<strong>按 PSCID 全量失效</strong>（<code>IOTINVAL.VMA</code> + <code>PSCV=1</code> + <code>PSCID</code>），否则脏 TLB 项会一直占着，甚至被后续复用同一 PSCID 的新 domain 误命中。</li>
+<li><b>RCU 释放</b>：<code>list_del_rcu</code> + <code>kfree_rcu</code> 配合，因为 <code>iotlb_inval</code> 走 <code>rcu_read_lock()</code> 遍历 bonds，删除不能直接 free，要等 RCU 宽限期。</li>
+</ol>
+<h3 id="m6-c4">6.3 并发同步图（注释里的精华）</h3>
+<p><code>riscv_iommu_iotlb_inval</code>（模块 ⑦）上方有一大段注释（:1060–1082），画的是<strong>页表更新 / IOTLB 失效</strong>与<strong>设备 attach / 目录更新</strong>两条路径的竞态协调，核心是两处 <code>smp_mb()</code> 的配对：</p>
+<pre><code>PTE 更新 / IOTLB 失效          设备 attach &amp; 目录更新
+----------------------         ------------------------
+更新页表项                      把 dev 加进 bond 链表
+FENCE RW,RW                    FENCE RW,RW
+对所有 IOMMU:（可能为空）        更新 FSC/PSCID
+  FENCE IOW,IOW                  FENCE IOW,IOW
+  IOTLB.INVAL                    IODIR.INVAL
+  IOFENCE.C</code></pre>
+<p>保证的语义是：<strong>新设备加入 bond 链表要么发生在目录更新之前（后续失效会覆盖它），要么发生在之后（它的目录已指向有效页表）</strong>，无论哪种交错，都不会出现「设备已生效但没收到失效」的窗口。这就是 <code>bond_link</code> 末尾 <code>smp_mb()</code> 和 <code>iotlb_inval</code> 开头 <code>smp_mb()</code> 配对的意义。</p>
+</section><section class="card" id="m7">
+<h2><span class="no">7</span>IOTLB 失效 <span class="tag red">iommu.c:945–1249</span></h2>
+<p class="ref">tlbi_calc <code>:960–1003</code> · iotlb_inval_iommu <code>:1005–1049</code> · iotlb_inval <code>:1051–1113</code> · iodir_iotinval <code>:1121–1176</code> · iodir_update <code>:1189–1249</code></p>
+<h3 id="m7-c1">7.0 struct riscv_iommu_tlbi（:945–958）</h3>
+<p>失效请求的抽象，三种形态：<strong>逐地址</strong>（single）、<strong>NAPOT 范围</strong>（range）、<strong>全局</strong>（use_global）。</p>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_tlbi</span> {
+    <span class="type">u64</span> start, last;       <span class="cmt">// 失效范围 [start, last]</span>
+    <span class="kw">bool</span> non_leaf;         <span class="cmt">// 是否改了非叶子（中间目录）</span>
+    <span class="kw">struct</span> { <span class="kw">bool</span> use_global; <span class="type">u8</span> stride_lg2; <span class="kw">unsigned</span> <span class="kw">int</span> num; } single;
+    <span class="kw">struct</span> { <span class="type">u8</span> sz_lg2; <span class="type">u64</span> addr; } range;
+};</code></pre>
+<h3 id="m7-c2">7.1 tlbi_calc（:960–1003）—— 失效粒度决策</h3>
+<pre><code><span class="type">u8</span> combined = gather-&gt;pt.leaf_levels_bitmap | gather-&gt;pt.table_levels_bitmap;
+tlbi-&gt;non_leaf = gather-&gt;pt.table_levels_bitmap != <span class="num">0</span>;
+
+<span class="kw">if</span> (!combined) { tlbi-&gt;single.use_global = <span class="kw">true</span>; <span class="kw">return</span>; }   <span class="cmt">// 无层级信息 → 全局</span>
+
+<span class="cmt">// 覆盖 [start,last] 的最小 NAPOT 范围</span>
+tlbi-&gt;range.sz_lg2 = fls64(start ^ last);
+tlbi-&gt;range.addr = start &amp; ~(BIT_U64(sz_lg2) - <span class="num">1</span>);
+
+<span class="cmt">// 逐地址 stride：最低被改层级 × 每级9位 × 4KiB</span>
+tlbi-&gt;single.stride_lg2 = <span class="num">9</span> * __ffs(combined) + <span class="num">12</span>;
+num = (last - start + <span class="num">1</span>) &gt;&gt; stride_lg2;
+<span class="kw">if</span> (!num || num &gt; <span class="num">512</span>) tlbi-&gt;single.use_global = <span class="kw">true</span>;   <span class="cmt">// 超过512条 → 全局</span>
+<span class="kw">else</span> { tlbi-&gt;single.num = num; tlbi-&gt;single.use_global = <span class="kw">false</span>; }</code></pre>
+<p>三个决策点：</p>
+<ol>
+<li><b>NAPOT 范围</b>：<code>sz_lg2 = fls64(start ^ last)</code> —— start/last 异或后最高位就是两者开始分歧的位，即「盖住这个区间的最小 2 的幂」的指数。例：start=0x1000、last=0x2FFF，异或=0x3FFF，<code>fls</code>=14，需要 2^14=16K 对齐范围。<strong>过度失效永远安全</strong>，所以取整到自然对齐。</li>
+<li><b>逐地址 stride</b>：<code>9 * __ffs(combined) + 12</code>。RISC-V 每级页表 9 位（512 项）、页大小 4 KiB（12 位）。<code>__ffs(combined)</code> 是最低被修改层级，stride 就是该层级一个条目覆盖的地址跨度。</li>
+<li><b>512 条阈值</b>：逐地址失效最多发 512 条命令，超过就退全局——发命令本身有开销，大范围逐条不如一条全局（AV=0）划算。</li>
+</ol>
+<h3 id="m7-c3">7.2 iotlb_inval_iommu（:1005–1049）—— 对单个 IOMMU 发失效</h3>
+<pre><code><span class="kw">bool</span> use_nl = tlbi-&gt;non_leaf &amp;&amp; (iommu-&gt;caps &amp; CAPABILITIES_NL);
+
+riscv_iommu_cmd_inval_vma(&amp;cmd);
+riscv_iommu_cmd_inval_set_pscid(&amp;cmd, pscid);     <span class="cmt">// PSCV=1, PSCID</span>
+
+<span class="kw">if</span> (tlbi-&gt;non_leaf &amp;&amp; !use_nl) <span class="kw">goto</span> global;       <span class="cmt">// 改了非叶子但硬件无 NL → 全局</span>
+
+<span class="kw">if</span> ((caps &amp; CAPABILITIES_S) &amp;&amp; range.sz_lg2 &gt;= <span class="num">13</span>) {   <span class="cmt">// 支持 NAPOT 且 ≥8KiB</span>
+    riscv_iommu_cmd_inval_set_napot(&amp;cmd, range.addr, range.sz_lg2);
+    <span class="kw">if</span> (use_nl) riscv_iommu_cmd_inval_set_nl(&amp;cmd);
+    riscv_iommu_cmd_send(iommu, &amp;cmd);            <span class="cmt">// 单条范围失效</span>
+} <span class="kw">else</span> {
+    <span class="kw">if</span> (single.use_global) <span class="kw">goto</span> global;
+    <span class="kw">for</span> (i = <span class="num">0</span>; i &lt; single.num; i++) {            <span class="cmt">// 逐地址失效</span>
+        riscv_iommu_cmd_inval_set_addr(&amp;cmd, iova);
+        <span class="kw">if</span> (use_nl) riscv_iommu_cmd_inval_set_nl(&amp;cmd);
+        riscv_iommu_cmd_send(iommu, &amp;cmd);
+        iova += 1ULL &lt;&lt; stride_lg2;
+    }
+}
+<span class="kw">return</span>;
+global:
+    riscv_iommu_cmd_send(iommu, &amp;cmd);            <span class="cmt">// AV=0 → 全 PSCID 失效</span></code></pre>
+<p>优先级链：<strong>NAPOT 单条 &gt; 逐地址 &gt; 全局</strong>，由两个硬件能力位（<code>NL</code>、<code>S</code>）和范围大小决定。注意 <code>cmd_inval_set_napot</code>（iommu-bits.h:741）里 <code>pfn |= BIT(sz_lg2 - 13) - 1</code> 是 NAPOT 的编码——把页号低位填 1 表示「连续 2 的幂页」。</p>
+<h3 id="m7-c4">7.3 iotlb_inval（:1051–1113）—— 对所有挂载 IOMMU 失效</h3>
+<pre><code>smp_mb(); rcu_read_lock();
+
+prev = <span class="kw">NULL</span>;
+list_for_each_entry_rcu(bond, &amp;domain-&gt;bonds, list) {   <span class="cmt">// 第一遍：发失效</span>
+    iommu = dev_to_iommu(bond-&gt;dev);
+    <span class="kw">if</span> (iommu == prev) <span class="kw">continue</span>;                         <span class="cmt">// 同 IOMMU 去重</span>
+    riscv_iommu_iotlb_inval_iommu(iommu, domain-&gt;pscid, &amp;tlbi);
+    prev = iommu;
+}
+
+prev = <span class="kw">NULL</span>;
+list_for_each_entry_rcu(bond, &amp;domain-&gt;bonds, list) {   <span class="cmt">// 第二遍：发 fence 同步</span>
+    iommu = dev_to_iommu(bond-&gt;dev);
+    <span class="kw">if</span> (iommu == prev) <span class="kw">continue</span>;
+    riscv_iommu_cmd_sync(iommu, RISCV_IOMMU_IOTINVAL_TIMEOUT);
+    prev = iommu;
+}
+rcu_read_unlock();</code></pre>
+<p><strong>两遍遍历</strong>是性能优化：第一遍对所有 IOMMU 先发出失效命令（并行铺开），第二遍才统一 <code>cmd_sync</code> 等 fence。若每个 IOMMU 都「发失效→立即等 fence」，就会串行等待，拖慢多 IOMMU 场景。去重靠模块 ⑥ 的「bonds 按 IOMMU 分组」不变式 + <code>prev</code> 检查。</p>
+<h3 id="m7-c5">7.4 iodir_iotinval（:1121–1176）</h3>
+<p>目录条目（DDT/PDT）更新后的失效，按规范 6.3.1/6.3.2 区分<strong>两级翻译</strong>：</p>
+<ul>
+<li><b>DC.iohgatp.mode == BARE</b>（无第二级）：单级场景，按 PSCID 失效（<code>PSCV=1</code>），或裸失效（GV=AV=PSCV=0）。</li>
+<li><b>非 BARE</b>（有第二级 G-stage）：先 <code>set_gscid</code>（<code>GV=1, GSCID=...</code>），涉及 PDT 再加 <code>PSCV=1, PSCID=...</code>。</li>
+</ul>
+<p>当前驱动 SVA/PASID 未合并，<code>inval_pdt</code> 恒 false、<code>pc</code> 恒 NULL，实际只走单级路径，第二级分支是给未来 G-stage 预留的骨架。</p>
+<h3 id="m7-c6">7.5 iodir_update（:1189–1249）—— 两遍式目录更新</h3>
+<p>这是缓存一致性问题的源码本体。核心：<strong>更新设备上下文必须「先失效旧、再写新」，且 V 位最后写。</strong></p>
+<pre><code><span class="cmt">// 第一遍：失效旧上下文</span>
+<span class="kw">for</span> (i = <span class="num">0</span>; i &lt; fwspec-&gt;num_ids; i++) {
+    dc = riscv_iommu_get_dc(iommu, fwspec-&gt;ids[i]);
+    tc = READ_ONCE(dc-&gt;tc);
+    <span class="kw">if</span> (!(tc &amp; RISCV_IOMMU_DC_TC_V)) <span class="kw">continue</span>;          <span class="cmt">// 未生效，跳过</span>
+
+    WRITE_ONCE(dc-&gt;tc, tc &amp; ~RISCV_IOMMU_DC_TC_V);       <span class="cmt">// ① 清 V，条目失效</span>
+    riscv_iommu_cmd_iodir_inval_ddt(&amp;cmd);               <span class="cmt">// ② 失效目录缓存</span>
+    riscv_iommu_cmd_iodir_set_did(&amp;cmd, fwspec-&gt;ids[i]);
+    riscv_iommu_cmd_send(iommu, &amp;cmd);
+    riscv_iommu_iodir_iotinval(iommu, <span class="kw">false</span>, dc-&gt;iohgatp, dc, <span class="kw">NULL</span>);  <span class="cmt">// ③ 失效 TLB</span>
+    sync_required = <span class="kw">true</span>;
+}
+<span class="kw">if</span> (sync_required) riscv_iommu_cmd_sync(iommu, ...);     <span class="cmt">// 等旧上下文彻底失效</span>
+
+<span class="cmt">// 第二遍：写新上下文</span>
+<span class="kw">for</span> (i = <span class="num">0</span>; i &lt; fwspec-&gt;num_ids; i++) {
+    dc = riscv_iommu_get_dc(iommu, fwspec-&gt;ids[i]);
+    tc = READ_ONCE(dc-&gt;tc);
+    tc |= ta &amp; RISCV_IOMMU_DC_TC_V;
+
+    WRITE_ONCE(dc-&gt;fsc, fsc);                            <span class="cmt">// ④ 先写 fsc/ta</span>
+    WRITE_ONCE(dc-&gt;ta, ta &amp; RISCV_IOMMU_PC_TA_PSCID);
+    dma_wmb();                                           <span class="cmt">// ⑤ 屏障：fsc/ta 先于 tc 可见</span>
+    WRITE_ONCE(dc-&gt;tc, tc);                              <span class="cmt">// ⑥ 最后写 TC.V 生效</span>
+
+    riscv_iommu_cmd_iodir_inval_ddt(&amp;cmd);               <span class="cmt">// ⑦ 再次失效目录缓存</span>
+    riscv_iommu_cmd_iodir_set_did(&amp;cmd, fwspec-&gt;ids[i]);
+    riscv_iommu_cmd_send(iommu, &amp;cmd);
+    riscv_iommu_iodir_iotinval(iommu, <span class="kw">false</span>, dc-&gt;iohgatp, dc, <span class="kw">NULL</span>);
+}
+riscv_iommu_cmd_sync(iommu, ...);</code></pre>
+<p>三个「为什么」：</p>
+<ol>
+<li><b>为什么两遍 + 中间 sync</b>：如果直接覆盖 <code>fsc/ta</code>，硬件可能正在用旧 DC 做翻译，新旧交错会产生瞬态错误翻译。所以先清 V 让旧上下文「退休」，<code>cmd_sync</code> 等硬件确认放弃，再写新值。</li>
+<li><b>为什么 V 位最后写（⑤⑥）</b>：<code>TC.V</code> 是 DC 的「生效开关」，<code>dma_wmb()</code> 保证 <code>fsc/ta</code> 的写先于 <code>tc</code> 到达硬件可见性，否则硬件会看到 <code>V=1</code> 但 <code>fsc/ta</code> 还是旧值的非法状态。</li>
+<li><b>为什么每个 ID 失效两次</b>：清 V 后失效一次（让硬件丢弃缓存的旧 DC），写新值后再失效一次（强制硬件重载新 DC）。</li>
+</ol>
+</section><section class="card" id="m8">
+<h2><span class="no">8</span>页表管理 <span class="tag green">iommu.c:1251–1395</span></h2>
+<p class="ref">flush_all <code>:1255–1266</code> · iotlb_sync <code>:1268–1275</code> · free <code>:1277–1288</code> · pt_supported <code>:1290–1303</code> · attach <code>:1305–1333</code> · alloc <code>:1343–1395</code></p>
+<h3 id="m8-c1">8.1 iotlb_flush_all（:1255–1266）</h3>
+<pre><code><span class="kw">struct</span> <span class="type">iommu_iotlb_gather</span> gather = {
+    .start = <span class="num">0</span>, .end = ULONG_MAX,
+    .pt.leaf_levels_bitmap  = <span class="num">0xFF</span>,   <span class="cmt">// 所有叶子层级都改</span>
+    .pt.table_levels_bitmap = <span class="num">0xFE</span>,   <span class="cmt">// 所有非叶子层级都改</span>
+};
+riscv_iommu_iotlb_inval(domain, &amp;gather);</code></pre>
+<p>构造覆盖全地址空间的 gather 交给 <code>iotlb_inval</code>。值得点出它和 <code>tlbi_calc</code> 的联动：<code>start=0, end=ULONG_MAX</code> → <code>start ^ last = ULONG_MAX</code> → <code>fls64 = 64</code> → 命中 <code>sz_lg2 &gt;= 64</code> 分支 → <code>use_global = true</code>，最终发一条 <code>AV=0</code> 的全局失效。</p>
+<h3 id="m8-c2">8.2 iotlb_sync（:1268–1275）—— 先失效、再释放</h3>
+<pre><code>riscv_iommu_iotlb_inval(domain, gather);      <span class="cmt">// ① 先刷 IOTLB</span>
+iommu_put_pages_list(&amp;gather-&gt;freelist);      <span class="cmt">// ② 再释放页</span></code></pre>
+<p>这是 IOMMU 页表 unmap 的<strong>延迟释放</strong>核心。io-pgtable 的 unmap 只把被解映射的页塞进 <code>gather-&gt;freelist</code>，<strong>不立即 free</strong>——因为硬件 IOTLB 可能还在引用这些页做翻译。必须等到 <code>iotlb_sync</code> 把 TLB 刷干净，这些页才真正释放。顺序反了就会「释放还在被 IOTLB 用的页」，是经典 use-after-free。</p>
+<h3 id="m8-c3">8.3 free_paging_domain（:1277–1288）</h3>
+<pre><code>WARN_ON(!list_empty(&amp;domain-&gt;bonds));              <span class="cmt">// 释放时不应有设备还挂着</span>
+<span class="kw">if</span> ((<span class="kw">int</span>)domain-&gt;pscid &gt; <span class="num">0</span>)
+    ida_free(&amp;riscv_iommu_pscids, domain-&gt;pscid);  <span class="cmt">// 归还 PSCID</span>
+pt_iommu_deinit(&amp;domain-&gt;riscvpt.iommu);           <span class="cmt">// 释放页表</span>
+kfree(domain);</code></pre>
+<p>三步收尾：断言 bonds 已空 → 归还 PSCID → deinit 页表 → free。<code>pscid &gt; 0</code> 判断是因为 PSCID 从 1 起（0 表示未分配），负值/0 都不该归还。</p>
+<h3 id="m8-c4">8.4 pt_supported（:1290–1303）</h3>
+<pre><code><span class="kw">switch</span> (pgd_mode) {
+<span class="kw">case</span> RISCV_IOMMU_DC_FSC_IOSATP_MODE_SV39: <span class="kw">return</span> iommu-&gt;caps &amp; CAPABILITIES_SV39;
+<span class="kw">case</span> RISCV_IOMMU_DC_FSC_IOSATP_MODE_SV48: <span class="kw">return</span> iommu-&gt;caps &amp; CAPABILITIES_SV48;
+<span class="kw">case</span> RISCV_IOMMU_DC_FSC_IOSATP_MODE_SV57: <span class="kw">return</span> iommu-&gt;caps &amp; CAPABILITIES_SV57;
+}</code></pre>
+<div class="callout amber">
+<div class="title">一个易踩的坑</div>
+<p class="lead" style="margin:0"><code>IOSATP_MODE_SV39 = 8</code>、<code>SV48 = 9</code>、<code>SV57 = 10</code>（<code>iommu-bits.h:396–405</code>），不是直觉的 0/1/2。因为 <code>fsc.mode</code> 复用了 RISC-V <code>satp</code> 的编码（<code>SV39X4=8, SV48X4=9, SV57X4=10</code>），X4 是「2 位扩展」标记。所以 switch 匹配的是这些大值。</p>
+</div>
+<h3 id="m8-c5">8.5 attach_paging_domain（:1305–1333）—— attach 流程</h3>
+<pre><code>pt_iommu_riscv_64_hw_info(&amp;domain-&gt;riscvpt, &amp;pt_info);   <span class="cmt">// 取页表根 PPN + 模式</span>
+<span class="kw">if</span> (!riscv_iommu_pt_supported(iommu, pt_info.fsc_iosatp_mode))
+    <span class="kw">return</span> -ENODEV;                                       <span class="cmt">// 硬件不支持该页表模式</span>
+
+fsc = FIELD_PREP(PC_FSC_MODE, pt_info.fsc_iosatp_mode) |
+      FIELD_PREP(PC_FSC_PPN, pt_info.ppn);               <span class="cmt">// 第一级上下文：模式+根页表PPN</span>
+ta  = FIELD_PREP(PC_TA_PSCID, domain-&gt;pscid) | PC_TA_V;  <span class="cmt">// 翻译属性：PSCID+V</span>
+
+riscv_iommu_bond_link(domain, dev);                       <span class="cmt">// ① 先加 bond</span>
+riscv_iommu_iodir_update(iommu, dev, fsc, ta);            <span class="cmt">// ② 再写目录（指向新页表）</span>
+riscv_iommu_bond_unlink(info-&gt;domain, dev);               <span class="cmt">// ③ 再解绑旧 domain</span>
+info-&gt;domain = domain;                                    <span class="cmt">// ④ 记录新 domain</span></code></pre>
+<p><strong>顺序是刻意的</strong>：先 <code>bond_link</code> 新 domain、再 <code>iodir_update</code> 指向新页表、最后 <code>bond_unlink</code> 旧 domain。这个次序配合模块 ⑥ 的并发同步图——设备在目录更新那一刻就已属于新 domain 的失效覆盖范围，不会出现「设备还挂在旧 domain 但目录已经切走」导致旧 domain 的失效漏发。</p>
+<h3 id="m8-c6">8.6 paging_domain_ops（:1335–1341）</h3>
+<pre><code><span class="kw">static</span> <span class="kw">const</span> <span class="kw">struct</span> <span class="type">iommu_domain_ops</span> riscv_iommu_paging_domain_ops = {
+    IOMMU_PT_DOMAIN_OPS(riscv_64),          <span class="cmt">// map/unmap/iova_to_phys 等标准页表操作</span>
+    .attach_dev    = riscv_iommu_attach_paging_domain,
+    .free          = riscv_iommu_free_paging_domain,
+    .iotlb_sync    = riscv_iommu_iotlb_sync,
+    .flush_iotlb_all = riscv_iommu_iotlb_flush_all,
+};</code></pre>
+<p><code>IOMMU_PT_DOMAIN_OPS(riscv_64)</code> 是 generic_pt 库的宏，展开成 <code>map</code>/<code>unmap</code>/<code>iova_to_phys</code> 等标准回调；驱动只补上 4 个自己实现的回调。</p>
+<h3 id="m8-c7">8.7 alloc_paging_domain（:1343–1395）—— domain 构造</h3>
+<pre><code><span class="cmt">// ① 按能力选最大虚拟地址空间</span>
+<span class="kw">if</span> (caps &amp; SV57)      cfg.common.hw_max_vasz_lg2 = <span class="num">57</span>;
+<span class="kw">else</span> <span class="kw">if</span> (caps &amp; SV48) cfg.common.hw_max_vasz_lg2 = <span class="num">48</span>;
+<span class="kw">else</span> <span class="kw">if</span> (caps &amp; SV39) cfg.common.hw_max_vasz_lg2 = <span class="num">39</span>;
+<span class="kw">else</span> <span class="kw">return</span> ERR_PTR(-ENODEV);
+cfg.common.hw_max_oasz_lg2 = <span class="num">56</span>;            <span class="cmt">// 输出地址空间固定 56 位</span>
+
+domain = kzalloc_obj(*domain);
+INIT_LIST_HEAD_RCU(&amp;domain-&gt;bonds);
+spin_lock_init(&amp;domain-&gt;lock);
+
+<span class="cmt">// ② 配置 generic_pt 特性位</span>
+cfg.common.features = BIT(PT_FEAT_SIGN_EXTEND) |        <span class="cmt">// 符号扩展</span>
+                      BIT(PT_FEAT_FLUSH_RANGE) |        <span class="cmt">// 范围失效</span>
+                      BIT(PT_FEAT_RISCV_SVNAPOT_64K) |  <span class="cmt">// NAPOT 连续翻译</span>
+                      BIT(PT_FEAT_DETAILED_GATHER);     <span class="cmt">// 详细 gather 信息</span>
+<span class="kw">if</span> (caps &amp; SVPBMT) cfg.common.features |= BIT(PT_FEAT_RISCV_SVPBMT);
+
+domain-&gt;riscvpt.iommu.nid = dev_to_node(iommu-&gt;dev);    <span class="cmt">// ③ NUMA 本地内存</span>
+domain-&gt;domain.ops = &amp;riscv_iommu_paging_domain_ops;
+
+<span class="cmt">// ④ 分配 PSCID（1 ~ 2^20-1）</span>
+domain-&gt;pscid = ida_alloc_range(&amp;riscv_iommu_pscids, <span class="num">1</span>, RISCV_IOMMU_MAX_PSCID, GFP_KERNEL);
+<span class="kw">if</span> (domain-&gt;pscid &lt; <span class="num">0</span>) { ...; <span class="kw">return</span> ERR_PTR(-ENOMEM); }
+
+<span class="cmt">// ⑤ 初始化页表</span>
+ret = pt_iommu_riscv_64_init(&amp;domain-&gt;riscvpt, &amp;cfg, GFP_KERNEL);
+<span class="kw">if</span> (ret) { ...; <span class="kw">return</span> ERR_PTR(ret); }
+<span class="kw">return</span> &amp;domain-&gt;domain;</code></pre>
+<ul>
+<li><strong><code>hw_max_vasz_lg2</code></strong> 决定页表级数：57→SV57 五级、48→SV48 四级、39→SV39 三级；输出地址空间固定 56 位（对应模块 ① 的 44 位 PPN 封顶）。</li>
+<li><strong><code>PT_FEAT_DETAILED_GATHER</code></strong> 是模块 ⑦ <code>tlbi_calc</code> 能工作的前提——它让 gather 携带 <code>leaf_levels_bitmap / table_levels_bitmap</code>，失效粒度决策全靠这两个位图。没有它 <code>tlbi_calc</code> 只能走 <code>!combined</code> 的全局失效分支。</li>
+<li><strong>PSCID 从 1 起</strong>：0 保留（<code>ida_alloc_range</code> 下界 1），blocking/identity domain 不占 PSCID。</li>
+</ul>
+</section><section class="card" id="m9">
+<h2><span class="no">9</span>blocking / identity domain <span class="tag green">iommu.c:1397–1438</span></h2>
+<p class="ref">blocking <code>:1397–1417</code> · identity <code>:1419–1438</code></p>
+<p class="lead">这两个 domain 都是<strong>静态单例</strong>（<code>static struct iommu_domain</code>），不占 PSCID、不分配页表、不进 bond 链表——因为硬件不缓存负翻译和 BARE 透传翻译。</p>
+<h3 id="m9-c1">9.1 blocking domain（:1397–1417）</h3>
+<pre><code><span class="cmt">/* Make device context invalid, translation requests will fault w/ #258 */</span>
+riscv_iommu_iodir_update(iommu, dev, RISCV_IOMMU_FSC_BARE, <span class="num">0</span>);  <span class="cmt">// fsc=BARE, ta=0</span>
+riscv_iommu_bond_unlink(info-&gt;domain, dev);
+info-&gt;domain = <span class="kw">NULL</span>;</code></pre>
+<p>blocking 的语义是<strong>阻止设备 DMA</strong>：把设备上下文置为无效，设备一发起翻译请求就 fault <strong>#258 = DDT_INVALID</strong>（模块 ④ 的 cause 表对上了）。</p>
+<h3 id="m9-c2">9.2 identity domain（:1419–1438）</h3>
+<pre><code>riscv_iommu_iodir_update(iommu, dev, RISCV_IOMMU_FSC_BARE, RISCV_IOMMU_PC_TA_V);
+riscv_iommu_bond_unlink(info-&gt;domain, dev);
+info-&gt;domain = <span class="kw">NULL</span>;</code></pre>
+<p>identity 的语义是<strong>透传</strong>（IOVA = PA）：fsc 仍是 BARE（第一级不翻译），但 ta 传了 <code>PC_TA_V</code>。</p>
+<h3 id="m9-c3">9.3 两者的差别只在一个 V 位</h3>
+<p>关键在 <code>iodir_update</code> 里的这行（模块 ⑦ 分析过）：</p>
+<pre><code>tc |= ta &amp; RISCV_IOMMU_DC_TC_V;   <span class="cmt">// 而 PC_TA_V 和 DC_TC_V 都是 BIT(0)</span></code></pre>
+<p><code>RISCV_IOMMU_PC_TA_V</code> 和 <code>RISCV_IOMMU_DC_TC_V</code> 恰好都是 <strong>BIT(0)</strong>，所以 <code>iodir_update</code> 的第二个参数（<code>ta</code>）里带不带 V 位，直接决定了 TC.V：</p>
+<table>
+<tr><th>domain</th><th>fsc</th><th>ta（传给 iodir_update）</th><th>结果 TC.V</th><th>设备 DMA 行为</th></tr>
+<tr><td>blocking</td><td>BARE</td><td><code>0</code></td><td>0（无效）</td><td>fault #258</td></tr>
+<tr><td>identity</td><td>BARE</td><td><code>PC_TA_V</code></td><td>1（有效）</td><td>BARE 透传</td></tr>
+</table>
+<div class="callout">
+<div class="title">最精炼之处</div>
+<p class="lead" style="margin:0">两者第一级都是 BARE（都不做翻译），唯一区别就是 V 位——<strong>同一个 <code>iodir_update</code> 函数，靠 ta 参数的 V 位复用，同时实现「阻断」和「透传」两种截然相反的语义</strong>。</p>
+</div>
+<p>另外注意：这两个 attach 都只 <code>bond_unlink</code> 旧 domain、不 <code>bond_link</code> 新 domain（因为它们不被跟踪），<code>info-&gt;domain = NULL</code> 表示设备不再挂任何 paging domain。</p>
+</section><section class="card" id="m10">
+<h2><span class="no">10</span>IOMMU ops <span class="tag green">iommu.c:1440–1515</span></h2>
+<p class="ref">device_group <code>:1440–1445</code> · of_xlate <code>:1447–1450</code> · probe <code>:1452–1497</code> · release <code>:1499–1504</code> · ops 表 <code>:1506–1515</code></p>
+<h3 id="m10-c1">10.1 device_group（:1440–1445）</h3>
+<pre><code><span class="kw">if</span> (dev_is_pci(dev)) <span class="kw">return</span> pci_device_group(dev);   <span class="cmt">// 按 PCI 拓扑 + ACS 划分</span>
+<span class="kw">return</span> generic_device_group(dev);                     <span class="cmt">// 非 PCI：每设备一个 group</span></code></pre>
+<p>IOMMU group 划分委托给内核通用实现：PCI 走 <code>pci_device_group</code>（考虑 ACS 隔离、多功能设备等），非 PCI 走 <code>generic_device_group</code>。驱动本身不自定义分组策略。</p>
+<h3 id="m10-c2">10.2 of_xlate（:1447–1450）</h3>
+<pre><code><span class="kw">return</span> iommu_fwspec_add_ids(dev, args-&gt;args, <span class="num">1</span>);   <span class="cmt">// 取第一个 arg 作为 devid</span></code></pre>
+<p>DT 里 <code>iommus = &lt;&amp;iommu devid&gt;</code> 的解析：把 <code>args-&gt;args[0]</code> 作为设备 ID 加入 fwspec。RISC-V IOMMU 的 DT 绑定里一个 iommus 项只带一个 devid（<code>#iommu-cells = &lt;1&gt;</code>），所以 <code>count=1</code>。</p>
+<h3 id="m10-c3">10.3 probe_device（:1452–1497）—— 设备接管入口</h3>
+<pre><code><span class="kw">if</span> (!fwspec || !fwspec-&gt;iommu_fwnode-&gt;dev || !fwspec-&gt;num_ids)
+    <span class="kw">return</span> ERR_PTR(-ENODEV);                          <span class="cmt">// ① 必须已关联 IOMMU + devid</span>
+
+iommu = dev_get_drvdata(fwspec-&gt;iommu_fwnode-&gt;dev);   <span class="cmt">// ② 取 IOMMU 设备</span>
+<span class="kw">if</span> (!iommu) <span class="kw">return</span> ERR_PTR(-ENODEV);
+
+<span class="kw">if</span> (iommu-&gt;ddt_mode &lt;= RISCV_IOMMU_DDTP_IOMMU_MODE_BARE)
+    <span class="kw">return</span> ERR_PTR(-ENODEV);                          <span class="cmt">// ③ 翻译未启用，不需接管</span>
+
+info = kzalloc_obj(*info);
+
+tc = <span class="num">0</span>;
+<span class="kw">for</span> (i = <span class="num">0</span>; i &lt; fwspec-&gt;num_ids; i++) {               <span class="cmt">// ④ 为每个 devid 预建 DC</span>
+    dc = riscv_iommu_get_dc(iommu, fwspec-&gt;ids[i]);   <span class="cmt">//    按需建目录表</span>
+    <span class="kw">if</span> (!dc) { kfree(info); <span class="kw">return</span> ERR_PTR(-ENODEV); }
+    <span class="kw">if</span> (READ_ONCE(dc-&gt;tc) &amp; RISCV_IOMMU_DC_TC_V)
+        dev_warn(dev, <span class="str">"already attached to IOMMU device directory\n"</span>);
+    WRITE_ONCE(dc-&gt;tc, tc);                           <span class="cmt">//    tc=0，V 位保持 0</span>
+}
+
+dev_iommu_priv_set(dev, info);                        <span class="cmt">// ⑤ 记录每设备私有数据</span>
+<span class="kw">return</span> &amp;iommu-&gt;iommu;</code></pre>
+<ul>
+<li><b>③ 是重要的短路</b>：如果 IOMMU 还在 <code>BARE</code>/<code>OFF</code> 模式，说明硬件已经透传所有设备（identity），根本不需要软件接管，直接返回 <code>-ENODEV</code> 让设备走无 IOMMU 路径。这也是 <code>iodir_set_mode</code> 在 init 里要先切到 xLVL 的原因——切完 probe 才接管。</li>
+<li><b>④ 是「预占位」而非「启用」</b>：<code>get_dc</code> 会触发模块 ⑤ 的目录表按需构建（目录结构此刻建好），但 <code>WRITE_ONCE(dc-&gt;tc, 0)</code> 保持 <code>TC.V=0</code>——<strong>DC 有效位不置</strong>。真正的启用要等到 <code>attach_*</code> 里的 <code>iodir_update</code> 写 V 位。probe 阶段设备是「注册了但被阻断」的状态。</li>
+<li>若发现 DC 已被占用（<code>TC.V</code> 已置位），只 <code>dev_warn</code> 不覆盖——同一 devid 被两个设备占用的异常场景。</li>
+</ul>
+<h3 id="m10-c4">10.4 release_device（:1499–1504）</h3>
+<pre><code>kfree_rcu_mightsleep(info);   <span class="cmt">// 可睡眠 RCU 释放</span></code></pre>
+<p>释放设备私有数据。用 <code>kfree_rcu_mightsleep</code> 而非直接 kfree，因为可能有 in-flight 的翻译/失效路径仍在通过 <code>dev_iommu_priv_get</code> 读它。</p>
+<h3 id="m10-c5">10.5 riscv_iommu_ops（:1506–1515）</h3>
+<pre><code><span class="kw">static</span> <span class="kw">const</span> <span class="kw">struct</span> <span class="type">iommu_ops</span> riscv_iommu_ops = {
+    .of_xlate           = riscv_iommu_of_xlate,          <span class="cmt">// DT 解析</span>
+    .identity_domain    = &amp;riscv_iommu_identity_domain,  <span class="cmt">// 透传单例</span>
+    .blocked_domain     = &amp;riscv_iommu_blocking_domain,  <span class="cmt">// 阻断单例</span>
+    .release_domain     = &amp;riscv_iommu_blocking_domain,  <span class="cmt">// 释放时默认阻断</span>
+    .domain_alloc_paging = riscv_iommu_alloc_paging_domain,
+    .device_group       = riscv_iommu_device_group,
+    .probe_device       = riscv_iommu_probe_device,
+    .release_device     = riscv_iommu_release_device,
+};</code></pre>
+<div class="callout amber">
+<div class="title">release_domain 指向 blocking domain</div>
+<p class="lead" style="margin:0">这表示设备被释放（driver 卸载）时，IOMMU core 会默认把设备 attach 到 blocking domain——即<strong>阻断 DMA</strong>，防止设备在 driver 没了之后还能乱写内存。这是 IOMMU 框架的安全兜底。</p>
+</div>
+</section><section class="card" id="m11">
+<h2><span class="no">11</span>初始化 / 移除 <span class="tag green">iommu.c:1517–1651</span></h2>
+<p class="ref">init_check <code>:1517–1569</code> · remove <code>:1571–1578</code> · init <code>:1580–1649</code></p>
+<h3 id="m11-c1">11.1 init_check（:1517–1569）—— 三项启动检查</h3>
+<h4 id="m11-c2">① DDTP 状态 + kdump 处理（:1526–1535）</h4>
+<pre><code>ddtp = riscv_iommu_readq(iommu, RISCV_IOMMU_REG_DDTP);
+<span class="kw">if</span> (ddtp &amp; RISCV_IOMMU_DDTP_BUSY) <span class="kw">return</span> -EBUSY;
+
+<span class="kw">if</span> (FIELD_GET(DDTP_MODE, ddtp) &gt; MODE_BARE) {   <span class="cmt">// 已处于 xLVL（上个内核启用了翻译）</span>
+    <span class="kw">if</span> (!is_kdump_kernel()) <span class="kw">return</span> -EBUSY;       <span class="cmt">// 正常启动不应遇到 → 报错</span>
+    riscv_iommu_disable(iommu);                  <span class="cmt">// kdump 内核 → 强制切 BARE 关翻译</span>
+}</code></pre>
+<p>崩溃转储（kdump）场景：前一个内核崩溃时 IOMMU 可能停在 xLVL 模式，转储内核必须先 <code>disable</code>（切 BARE 透传），否则转储过程的内存访问会被残留翻译干扰。正常启动若发现已启用则视为异常状态。</p>
+<h4 id="m11-c3">② 字节序检查（:1537–1548）</h4>
+<pre><code><span class="kw">if</span> (IS_ENABLED(CONFIG_CPU_BIG_ENDIAN) != !!(iommu-&gt;fctl &amp; RISCV_IOMMU_FCTL_BE)) {
+    <span class="kw">if</span> (!(iommu-&gt;caps &amp; RISCV_IOMMU_CAPABILITIES_END)) <span class="kw">return</span> -EINVAL;   <span class="cmt">// 不支持切换 → 失败</span>
+    riscv_iommu_writel(iommu, REG_FCTL, iommu-&gt;fctl ^ RISCV_IOMMU_FCTL_BE);  <span class="cmt">// 翻转 BE</span>
+    iommu-&gt;fctl = riscv_iommu_readl(iommu, REG_FCTL);   <span class="cmt">// 读回验证</span>
+    <span class="kw">if</span> (仍不匹配) <span class="kw">return</span> -EINVAL;
+}</code></pre>
+<p>IOMMU 读内存里的目录表、队列、命令，字节序必须和 CPU 写的一致，否则硬件读出来的字段是反的。若硬件支持 <code>END</code>（字节序可切换）能力就翻转 <code>fctl.BE</code> 对齐，否则直接失败。</p>
+<h4 id="m11-c4">③ 中断向量分发（:1554–1566）</h4>
+<pre><code><span class="kw">if</span> (!iommu-&gt;irqs_count) <span class="kw">return</span> -EINVAL;   <span class="cmt">// 至少一个中断</span>
+
+iommu-&gt;icvec = FIELD_PREP(ICVEC_FIV, <span class="num">1</span> % irqs_count) |
+               FIELD_PREP(ICVEC_PIV, <span class="num">2</span> % irqs_count) |
+               FIELD_PREP(ICVEC_PMIV, <span class="num">3</span> % irqs_count);
+riscv_iommu_writeq(iommu, REG_ICVEC, iommu-&gt;icvec);
+iommu-&gt;icvec = riscv_iommu_readq(iommu, REG_ICVEC);   <span class="cmt">// 读回，校验所有向量 &lt; irqs_count</span></code></pre>
+<p>ICVEC 寄存器把 4 个中断源映射到 MSI 向量（<code>CIV</code>/<code>FIV</code>/<code>PIV</code>/<code>PMIV</code>，每个 4 位）。CQ/FQ/PM/PQ 依次用向量 0/1/2/3，<code>% irqs_count</code> 处理中断数少于 4 时的循环复用。CIV 没在这里显式写——它保留 probe 阶段读到的初始值（注释 "always use first vector for CIV"）。</p>
+<h3 id="m11-c5">11.2 riscv_iommu_remove（:1571–1578）</h3>
+<pre><code>iommu_device_unregister(&amp;iommu-&gt;iommu);        <span class="cmt">// ① 先注销（core 停止 probe、detach 所有设备）</span>
+iommu_device_sysfs_remove(&amp;iommu-&gt;iommu);      <span class="cmt">// ② 移除 sysfs</span>
+riscv_iommu_iodir_set_mode(iommu, MODE_OFF);   <span class="cmt">// ③ 切 DDT 到 OFF</span>
+riscv_iommu_queue_disable(&amp;iommu-&gt;cmdq);       <span class="cmt">// ④ 关两个队列</span>
+riscv_iommu_queue_disable(&amp;iommu-&gt;fltq);</code></pre>
+<p>顺序和 init 严格相反，先摘掉对外接口再关内部资源。</p>
+<h3 id="m11-c6">11.3 riscv_iommu_init（:1580–1649）—— 启动流程总装</h3>
+<pre><code>RISCV_IOMMU_QUEUE_INIT(&amp;iommu-&gt;cmdq, CQ);   raw_spin_lock_init(&amp;iommu-&gt;cmdq.lock);
+RISCV_IOMMU_QUEUE_INIT(&amp;iommu-&gt;fltq, FQ);   <span class="cmt">// ① 配置队列寄存器偏移/默认长度</span>
+
+rc = riscv_iommu_init_check(iommu);         <span class="cmt">// ② 检查 + 字节序 + 中断向量</span>
+rc = riscv_iommu_iodir_alloc(iommu);        <span class="cmt">// ③ 分配 DDT 根页</span>
+rc = riscv_iommu_queue_alloc(iommu, &amp;cmdq, <span class="kw">sizeof</span>(command));  <span class="cmt">// ④ 分配 CQ ring</span>
+rc = riscv_iommu_queue_alloc(iommu, &amp;fltq, <span class="kw">sizeof</span>(fq_record)); <span class="cmt">// ⑤ 分配 FQ ring</span>
+rc = riscv_iommu_queue_enable(iommu, &amp;cmdq, cmdq_process);    <span class="cmt">// ⑥ 使能 CQ</span>
+rc = riscv_iommu_queue_enable(iommu, &amp;fltq, fltq_process);    <span class="cmt">// ⑦ 使能 FQ</span>
+rc = riscv_iommu_iodir_set_mode(iommu, MODE_MAX);             <span class="cmt">// ⑧ 切 DDT 到最大级数</span>
+rc = iommu_device_sysfs_add(...);           <span class="cmt">// ⑨ sysfs</span>
+<span class="kw">if</span> (!acpi_disabled) rimt_iommu_register(...);  <span class="cmt">// ⑩ ACPI RIMT</span>
+rc = iommu_device_register(&amp;iommu-&gt;iommu, &amp;riscv_iommu_ops, iommu-&gt;dev);  <span class="cmt">// ⑪ 注册 ops</span></code></pre>
+<div class="callout amber">
+<div class="title">顺序里藏着一个强依赖</div>
+<p class="lead" style="margin:0">必须先使能 CQ（⑥⑦）再切 DDT 模式（⑧）。因为 <code>iodir_set_mode</code> 收尾要发 <code>IODIR.INVAL_DDT</code> + <code>IOTINVAL.VMA</code> + <code>IOFENCE.C</code>（模块 ⑤.5），这些命令得靠已经 <code>queue_enable</code> 的 CQ 才能发出去。而最后（⑪）才 <code>iommu_device_register</code>——注册之后 core 才会调 <code>probe_device</code> 接管设备，所以之前所有内部结构都必须就绪。</p>
+</div>
+<p>错误回滚是标准的 goto 链：<code>err_remove_sysfs → err_iodir_off → err_queue_disable</code>，每层反向释放。</p>
+<h3 id="m11-c7">11.4 全驱动闭环</h3>
+<p class="lead">把 11 个模块串起来是一条完整数据流：</p>
+<pre><code>启动: init → init_check(字节序/中断) → iodir_alloc(建DDT根)
+      → queue_alloc×<span class="num">2</span> → queue_enable×<span class="num">2</span>(CQ/FQ) → set_mode(切xLVL) → <span class="kw">register</span> ops
+                          ↓
+设备接入: probe_device(预建DC,不置V) → attach_paging_domain
+          (bond_link → iodir_update: 清V→失效→写新→再失效)
+                          ↓
+翻译: 设备DMA → 硬件走DDT→DC→页表(第一级FSC/第二级IOHGATP)
+                          ↓
+页表变更: unmap → iotlb_sync(tlbi_calc决策粒度 → iotlb_inval发失效 → cmd_sync等fence)
+                          ↓
+故障上报: 硬件写FQ → fltq_process(consume/release) → fault打印
+                          ↓
+收尾: remove → unregister → OFF → queue_disable</code></pre>
+</section><section class="card" id="m12">
+<h2><span class="no">12</span>PCIe 设备接入 <span class="tag amber">iommu-pci.c:1–129</span></h2>
+<p class="ref">设备 ID <code>:23–31</code> · probe <code>:33–95</code> · remove/shutdown <code>:97–109</code> · 注册 <code>:111–128</code></p>
+<p class="lead">RISC-V IOMMU 作为 <strong>PCIe 设备</strong>的接入层，只做「发现设备 → 校验能力 → 分配中断 → 交给核心 <code>riscv_iommu_init</code>」。与平台设备版（下一节）不同，它<strong>只用 MSI/MSI-X</strong>，不支持 WSI。</p>
+<h3 id="m12-c1">12.1 设备 ID（:23–31）</h3>
+<pre><code>#define PCI_DEVICE_ID_REDHAT_RISCV_IOMMU     <span class="num">0x0014</span>   <span class="cmt">// QEMU 模拟的 IOMMU</span>
+#define PCI_VENDOR_ID_RIVOS                  <span class="num">0x1efd</span>   <span class="cmt">// Rivos 厂商 ID</span>
+#define PCI_DEVICE_ID_RIVOS_RISCV_IOMMU_GA   <span class="num">0x0008</span>   <span class="cmt">// Rivos 真实硬件</span></code></pre>
+<p>两套 ID 覆盖两种形态：QEMU 模拟实现（Red Hat 0x0014）与 Rivos 硅片（vendor 0x1efd / device 0x0008）。<code>PCI_VENDOR_ID_RIVOS</code> 用 <code>#ifndef</code> 包裹，防止和 <code>linux/pci_ids.h</code> 里已有的定义冲突。</p>
+<h3 id="m12-c2">12.2 probe 流程（:33–95）</h3>
+<p>PCI 核心在设备 ID 匹配到 <code>id_table</code> 后回调，分 9 步：</p>
+<h4 id="m12-c3">① 托管式使能设备（:39）</h4>
+<pre><code>rc = pcim_enable_device(pdev);</code></pre>
+<p><code>pcim_</code> 前缀是 managed（托管）接口——出错时资源自动释放，probe 里<strong>不用手动 free</strong>。这一步启用设备的 I/O 和 MEM 空间。</p>
+<h4 id="m12-c4">② 校验 BAR0（:43–47）</h4>
+<pre><code><span class="kw">if</span> (!(pci_resource_flags(pdev, <span class="num">0</span>) &amp; IORESOURCE_MEM)) <span class="kw">return</span> -ENODEV;
+<span class="kw">if</span> (pci_resource_len(pdev, <span class="num">0</span>) &lt; RISCV_IOMMU_REG_SIZE)  <span class="kw">return</span> -ENODEV;</code></pre>
+<p>IOMMU 控制寄存器<strong>必须映射在 BAR0 且是 MEM 型</strong>（非 I/O 端口型）。<code>RISCV_IOMMU_REG_SIZE = 0x1000</code>（4 KB），寄存器区至少 1 页。</p>
+<h4 id="m12-c5">③ ioremap 寄存器（:49）</h4>
+<pre><code>rc = pcim_iomap_regions(pdev, BIT(<span class="num">0</span>), pci_name(pdev));</code></pre>
+<p><code>BIT(0)</code> 表示<strong>只映射第 0 个 BAR</strong>。成功后寄存器虚拟地址可用 <code>pcim_iomap_table(pdev)[0]</code> 取到。</p>
+<h4 id="m12-c6">④ 分配并初始化设备结构（:53–61）</h4>
+<pre><code>iommu = devm_kzalloc(dev, <span class="kw">sizeof</span>(*iommu), GFP_KERNEL);
+iommu-&gt;dev = dev;
+iommu-&gt;reg = pcim_iomap_table(pdev)[<span class="num">0</span>];   <span class="cmt">// 保存寄存器虚拟地址</span>
+pci_set_master(pdev);                     <span class="cmt">// 允许 DMA（作为 bus master）</span>
+dev_set_drvdata(dev, iommu);              <span class="cmt">// 绑定到设备，供 remove 取回</span></code></pre>
+<p><code>pci_set_master</code> 很重要：IOMMU 需要<strong>主动发起 DMA</strong>（读/写页表、命令队列），必须能当 bus master。</p>
+<h4 id="m12-c7">⑤ 读能力寄存器（:64–65）</h4>
+<pre><code>iommu-&gt;caps = riscv_iommu_readq(iommu, RISCV_IOMMU_REG_CAPABILITIES); <span class="cmt">// 0x0000, 64bit</span>
+iommu-&gt;fctl = riscv_iommu_readl(iommu, RISCV_IOMMU_REG_FCTL);         <span class="cmt">// 0x0008, 32bit</span></code></pre>
+<p><code>caps</code> 是<strong>只读</strong>能力位图（SV39/SV48、ATS、MSI_FLAT、IGS…），<code>fctl</code> 是<strong>可读写</strong>特性控制（BE、WSI、GXL）。</p>
+<h4 id="m12-c8">⑥ 校验中断生成能力（:68–75）</h4>
+<pre><code><span class="kw">switch</span> (FIELD_GET(RISCV_IOMMU_CAPABILITIES_IGS, iommu-&gt;caps)) {   <span class="cmt">// caps[29:28]</span>
+<span class="kw">case</span> RISCV_IOMMU_CAPABILITIES_IGS_MSI:    <span class="cmt">// 0：只支持 MSI</span>
+<span class="kw">case</span> RISCV_IOMMU_CAPABILITIES_IGS_BOTH:   <span class="cmt">// 2：MSI+WSI 都支持</span>
+    <span class="kw">break</span>;
+<span class="kw">default</span>:                                    <span class="cmt">// 1=WSI only, 3=reserved</span>
+    <span class="kw">return</span> dev_err_probe(dev, -ENODEV, <span class="str">"unable to use message-signaled interrupts\n"</span>);
+}</code></pre>
+<p><code>IGS</code>（Interrupt Generation Support）是 caps 的 2 bit 字段，4 种取值。PCI 驱动<strong>只用 MSI/MSI-X</strong>，所以只接受「MSI」或「BOTH」。若硬件只支持 WSI（线信号中断，给平台 MMIO 设备用的），PCI 形态用不了，直接放弃。</p>
+<h4 id="m12-c9">⑦ 分配 MSI/MSI-X 中断向量（:78–86）</h4>
+<pre><code>rc = pci_alloc_irq_vectors(pdev, <span class="num">1</span>, RISCV_IOMMU_INTR_COUNT,   <span class="cmt">// min=1, max=4</span>
+                           PCI_IRQ_MSIX | PCI_IRQ_MSI);        <span class="cmt">// 优先 MSI-X</span>
+iommu-&gt;irqs_count = rc;
+<span class="kw">for</span> (vec = <span class="num">0</span>; vec &lt; iommu-&gt;irqs_count; vec++)
+    iommu-&gt;irqs[vec] = msi_get_virq(dev, vec);                 <span class="cmt">// 存 Linux 虚拟 IRQ 号</span></code></pre>
+<p><code>RISCV_IOMMU_INTR_COUNT = 4</code>，对应 4 类中断：</p>
+<table>
+<tr><th>索引</th><th>宏</th><th>含义</th></tr>
+<tr><td>0</td><td><code>RISCV_IOMMU_INTR_CQ</code></td><td>命令队列完成</td></tr>
+<tr><td>1</td><td><code>RISCV_IOMMU_INTR_FQ</code></td><td>Fault 队列非空</td></tr>
+<tr><td>2</td><td><code>RISCV_IOMMU_INTR_PM</code></td><td>性能监控/计数器溢出</td></tr>
+<tr><td>3</td><td><code>RISCV_IOMMU_INTR_PQ</code></td><td>页请求队列</td></tr>
+</table>
+<p>返回 <code>rc</code> 是<strong>实际分配到的向量数</strong>（可能小于 4）。<code>msi_get_virq</code> 把 MSI 消息转换成 Linux 的 virq（虚拟 IRQ 号），存进 <code>iommu-&gt;irqs[]</code>。</p>
+<h4 id="m12-c10">⑧ 关闭 WSI（:89–92）</h4>
+<pre><code><span class="kw">if</span> (iommu-&gt;fctl &amp; RISCV_IOMMU_FCTL_WSI) {   <span class="cmt">// FCTL[1] 置位？</span>
+    iommu-&gt;fctl ^= RISCV_IOMMU_FCTL_WSI;    <span class="cmt">// 清掉该位</span>
+    riscv_iommu_writel(iommu, RISCV_IOMMU_REG_FCTL, iommu-&gt;fctl);
+}</code></pre>
+<p>PCI 形态走 MSI，所以如果硬件<strong>复位默认开了 WSI</strong>（bit 1），要清掉。这里 <code>^=</code>（异或）看起来像 toggle，但<strong>只有进入分支（该位为 1）才执行</strong>，所以等价于 clear——一种巧妙的位清除写法。</p>
+<h4 id="m12-c11">⑨ 交给核心初始化（:94）</h4>
+<pre><code><span class="kw">return</span> riscv_iommu_init(iommu);</code></pre>
+<p>后续所有实际工作（分配命令/故障队列、建 DDT、使能翻译）都在 <code>iommu.c</code> 的 <code>riscv_iommu_init</code> 里，即模块 11。</p>
+<h3 id="m12-c12">12.3 remove 与 shutdown（:97–109）</h3>
+<pre><code>remove:   riscv_iommu_remove(iommu);   <span class="cmt">// 完整释放：队列、DDT、禁用翻译</span>
+shutdown: riscv_iommu_disable(iommu);  <span class="cmt">// 只停止翻译，不释放资源</span></code></pre>
+<table>
+<tr><th>路径</th><th>触发场景</th><th>调用</th><th>行为</th></tr>
+<tr><td><code>remove</code></td><td>设备被拔出 / 驱动卸载</td><td><code>riscv_iommu_remove</code></td><td><strong>完整释放</strong>所有资源</td></tr>
+<tr><td><code>shutdown</code></td><td>系统关机 / reboot / kexec</td><td><code>riscv_iommu_disable</code></td><td><strong>仅禁用翻译</strong>，不回收内存</td></tr>
+</table>
+<p><code>shutdown</code> 不回收资源的原因：马上要断电或换内核，释放内存是浪费；但必须<strong>停掉翻译</strong>，避免关机过程中设备还在发 DMA 打到半关闭的页表上。</p>
+<h3 id="m12-c13">12.4 设备表与驱动注册（:111–128）</h3>
+<pre><code><span class="kw">static</span> <span class="kw">const</span> <span class="kw">struct</span> <span class="type">pci_device_id</span> riscv_iommu_pci_tbl[] = {
+    { PCI_VDEVICE(REDHAT, PCI_DEVICE_ID_REDHAT_RISCV_IOMMU) },
+    { PCI_VDEVICE(RIVOS,  PCI_DEVICE_ID_RIVOS_RISCV_IOMMU_GA) },
+    { }   <span class="cmt">// 空项 = 结束哨兵</span>
+};
+
+<span class="kw">static</span> <span class="kw">struct</span> <span class="type">pci_driver</span> riscv_iommu_pci_driver = {
+    .name = KBUILD_MODNAME,
+    .id_table = riscv_iommu_pci_tbl,
+    .probe    = riscv_iommu_pci_probe,
+    .remove   = riscv_iommu_pci_remove,
+    .shutdown = riscv_iommu_pci_shutdown,
+    .driver = { .suppress_bind_attrs = <span class="kw">true</span> },
+};
+
+builtin_pci_driver(riscv_iommu_pci_driver);</code></pre>
+<p><code>PCI_VDEVICE(vendor, device)</code> 展开成 <code>PCI_DEVICE(vendor, device)</code>，即 vendor+device 完全匹配。<code>.suppress_bind_attrs = true</code> 禁止通过 sysfs 手动 unbind/bind——IOMMU 是系统关键设备，运行时解绑会让所有下游设备的 DMA 翻译立即失效。<code>builtin_pci_driver</code> 编译进内核（非模块），启动的 PCI 初始化阶段自动注册。</p>
+<div class="callout green">
+<div class="title">探测期 fail-fast 三门槛</div>
+<p class="lead" style="margin:0">BAR0 类型/长度不满足 → <code>-ENODEV</code>；<code>IGS</code> 字段（caps[29:28]）不支持 MSI → <code>-ENODEV</code>；中断分配不到 → <code>-ENODEV</code>。都是<strong>探测期直接返回</strong>，不进入后续核心逻辑。</p>
+</div>
+</section><section class="card" id="m13">
+<h2><span class="no">13</span>平台设备接入 <span class="tag amber">iommu-platform.c:1–185</span></h2>
+<p class="ref">头文件 <code>:13–22</code> · write_msi_msg <code>:24–44</code> · probe <code>:46–143</code> · remove/shutdown <code>:145–159</code> · 匹配表 <code>:161–170</code> · 注册 <code>:172–184</code></p>
+<p class="lead">RISC-V IOMMU 作为 <strong>平台设备</strong>（platform device，挂在 ACPI/设备树描述的 MMIO 总线上）的接入层。和 PCI 版最大的区别在<strong>中断配置</strong>：要支持 <strong>MSI 和 WSI 两种模式</strong>，还要兼容 <strong>OF（设备树）和 ACPI 两种固件描述</strong>。</p>
+<h3 id="m13-c1">13.1 头文件差异（:13–22）</h3>
+<pre><code>#include &lt;linux/acpi.h&gt;                    <span class="cmt">// ACPI 匹配</span>
+#include &lt;linux/irqchip/riscv-imsic.h&gt;     <span class="cmt">// RISC-V IMSIC（MSI 控制器）</span>
+#include &lt;linux/msi.h&gt;                     <span class="cmt">// MSI 消息写入接口</span>
+#include &lt;linux/of_irq.h&gt;                  <span class="cmt">// 设备树中断解析</span>
+#include &lt;linux/platform_device.h&gt;</code></pre>
+<h3 id="m13-c2">13.2 write_msi_msg（:24–44）—— 写内部 MSI 配置表</h3>
+<p class="lead">平台设备 MSI 的核心：把一条 MSI 消息写进 IOMMU 内部的「MSI 配置表」。</p>
+<pre><code><span class="kw">static</span> <span class="kw">void</span> riscv_iommu_write_msi_msg(<span class="kw">struct</span> <span class="type">msi_desc</span> *desc, <span class="kw">struct</span> <span class="type">msi_msg</span> *msg)
+{
+    <span class="type">u16</span> idx = desc-&gt;msi_index;                      <span class="cmt">// 用向量索引当表项号</span>
+    <span class="type">u64</span> addr = ((<span class="type">u64</span>)msg-&gt;address_hi &lt;&lt; <span class="num">32</span>) | msg-&gt;address_lo;
+
+    <span class="kw">if</span> (addr != (addr &amp; RISCV_IOMMU_MSI_CFG_TBL_ADDR))   <span class="cmt">// [55:2]</span>
+        dev_err_once(...);                           <span class="cmt">// 地址被截断时告警（只报一次）</span>
+
+    addr &amp;= RISCV_IOMMU_MSI_CFG_TBL_ADDR;            <span class="cmt">// 丢低 2 位</span>
+
+    riscv_iommu_writeq(iommu, RISCV_IOMMU_REG_MSI_CFG_TBL_ADDR(idx), addr);
+    riscv_iommu_writel(iommu, RISCV_IOMMU_REG_MSI_CFG_TBL_DATA(idx), msg-&gt;data);
+    riscv_iommu_writel(iommu, RISCV_IOMMU_REG_MSI_CFG_TBL_CTRL(idx), <span class="num">0</span>);
+}</code></pre>
+<div class="callout amber">
+<div class="title">为什么平台设备要自己写 MSI 消息？</div>
+<p class="lead" style="margin:0">PCI 设备有标准的 MSI/MSI-X capability 结构，但<strong>平台设备没有</strong>。所以 RISC-V IOMMU 规范规定：当 IOMMU 作为平台设备要发 MSI 时，它内部有一张 <strong>MSI 配置表</strong>（<code>RISCV_IOMMU_REG_MSI_CFG_TBL = 0x0300</code>），软件把「地址 + 数据」写进去，硬件产生中断事件时就把表里的消息发到对应地址。这是两个接入层<strong>最本质的区别</strong>。</p>
+</div>
+<p>表项布局（每项 0x10 字节，<code>_n</code> 为向量索引）：</p>
+<table>
+<tr><th>偏移</th><th>寄存器</th><th>位宽</th><th>含义</th></tr>
+<tr><td><code>+0x00</code></td><td><code>MSI_CFG_TBL_ADDR(n)</code></td><td>64</td><td>目标地址 <code>[55:2]</code>（<code>GENMASK_ULL(55,2)</code>）</td></tr>
+<tr><td><code>+0x08</code></td><td><code>MSI_CFG_TBL_DATA(n)</code></td><td>32</td><td>MSI 数据（<code>GENMASK_ULL(31,0)</code>）</td></tr>
+<tr><td><code>+0x0C</code></td><td><code>MSI_CFG_TBL_CTRL(n)</code></td><td>32</td><td>控制位（<code>CTRL_M = BIT(0)</code>，mask 位）</td></tr>
+</table>
+<ul>
+<li><strong><code>idx = desc-&gt;msi_index</code></strong>：把 Linux 分配的 MSI 向量索引直接当表项号，一一对应 <code>iommu-&gt;irqs[idx]</code>。</li>
+<li><strong>地址截断到 <code>[55:2]</code></strong>：MSI 地址按规范 4 字节对齐，低 2 位恒为 0；高位超出 55 位则告警。对应规范里 MSI 地址字段就是 <code>[55:2]</code>。</li>
+<li><strong>CTRL 写 0</strong>：表项默认未 mask（<code>CTRL_M</code> 位清零），让该中断立即可用。</li>
+</ul>
+<p>这个函数作为回调传给 <code>platform_device_msi_init_and_alloc_irqs</code>，在<strong>初始配置</strong>和 <strong>CPU 迁移</strong>（irqbalance 改 affinity）时都会被调用，把新消息重写到表里。</p>
+<h3 id="m13-c3">13.3 probe 流程（:46–143）</h3>
+<p>前半段（分配结构、映射寄存器、读 caps/fctl）和 PCI 版几乎一样，但<strong>中断部分分三路走</strong>。</p>
+<h4 id="m13-c4">① 映射寄存器（:60）</h4>
+<pre><code>iommu-&gt;reg = devm_platform_get_and_ioremap_resource(pdev, <span class="num">0</span>, &amp;res);</code></pre>
+<p>平台设备用 <code>devm_platform_get_and_ioremap_resource</code> 取<strong>第 0 个 MEM 资源</strong>并 ioremap（等价于 PCI 版的 BAR0）。</p>
+<h4 id="m13-c5">② 读能力、预设中断数（:68–71）</h4>
+<pre><code>iommu-&gt;caps = riscv_iommu_readq(iommu, RISCV_IOMMU_REG_CAPABILITIES);
+iommu-&gt;fctl = riscv_iommu_readl(iommu, RISCV_IOMMU_REG_FCTL);
+iommu-&gt;irqs_count = RISCV_IOMMU_INTR_COUNT;   <span class="cmt">// 预置 4，后面按模式调整</span></code></pre>
+<h4 id="m13-c6">③ IGS 三路分支（:73–140）</h4>
+<pre><code>igs = FIELD_GET(RISCV_IOMMU_CAPABILITIES_IGS, iommu-&gt;caps);
+<span class="kw">switch</span> (igs) { ... }</code></pre>
+<h4 id="m13-c7">分支 A：IGS_BOTH / IGS_MSI —— MSI 模式（:75–107）</h4>
+<p>先确定 MSI domain 的来源——<strong>OF 和 ACPI 走不同路径</strong>：</p>
+<pre><code><span class="kw">if</span> (is_of_node(dev_fwnode(dev))) {
+    of_msi_configure(dev, to_of_node(dev-&gt;fwnode));      <span class="cmt">// 设备树：解析 msi-parent</span>
+} <span class="kw">else</span> {
+    msi_domain = irq_find_matching_fwnode(imsic_acpi_get_fwnode(dev),
+                                          DOMAIN_BUS_PLATFORM_MSI);  <span class="cmt">// ACPI 下找 IMSIC</span>
+    dev_set_msi_domain(dev, msi_domain);
+}
+
+<span class="kw">if</span> (!dev_get_msi_domain(dev)) { ... <span class="kw">goto</span> msi_fail; }
+
+ret = platform_device_msi_init_and_alloc_irqs(dev, iommu-&gt;irqs_count,
+                                              riscv_iommu_write_msi_msg);
+<span class="kw">for</span> (vec = <span class="num">0</span>; vec &lt; iommu-&gt;irqs_count; vec++)
+    iommu-&gt;irqs[vec] = msi_get_virq(dev, vec);
+
+<span class="cmt">// 清掉 fctl.WSI（MSI 模式）</span>
+<span class="kw">if</span> (iommu-&gt;fctl &amp; RISCV_IOMMU_FCTL_WSI) {
+    iommu-&gt;fctl ^= RISCV_IOMMU_FCTL_WSI;
+    riscv_iommu_writel(iommu, RISCV_IOMMU_REG_FCTL, iommu-&gt;fctl);
+}</code></pre>
+<ul>
+<li><strong>设备树</strong>：<code>of_msi_configure</code> 从 DT 的 <code>msi-parent</code> 属性解析出 MSI 控制器（RISC-V 上通常是 IMSIC）。</li>
+<li><strong>ACPI</strong>：直接调 <code>imsic_acpi_get_fwnode</code> 拿到 IMSIC 的 fwnode，用 <code>irq_find_matching_fwnode</code> 找到 platform-MSI 类型的 irq domain。</li>
+<li>一次性分配满 <code>RISCV_IOMMU_INTR_COUNT = 4</code> 个 MSI（平台 MSI 不像 PCI 那样有弹性，固定按请求数分）。</li>
+</ul>
+<div class="callout amber">
+<div class="title">msi_fail 标签 + fallthrough（:109–115）</div>
+<pre><code>msi_fail:
+    <span class="kw">if</span> (igs != RISCV_IOMMU_CAPABILITIES_IGS_BOTH) {
+        <span class="kw">return</span> dev_err_probe(dev, -ENODEV, <span class="str">"unable to use wire-signaled interrupts\n"</span>);
+    }
+    fallthrough;</code></pre>
+<p class="lead" style="margin:0">如果 MSI 配置失败（<code>goto msi_fail</code>），但硬件 <code>IGS == BOTH</code>（两种都支持），就<strong>降级到 WSI 模式</strong>继续；如果 <code>IGS == MSI</code>（只支持 MSI）且 MSI 配不出来，那<strong>只能失败返回</strong>。<code>fallthrough</code> 是 Linux 宏，展开成 <code>__attribute__((fallthrough))</code>，明确告诉编译器这里是有意穿过 case，别报 -Wimplicit-fallthrough 警告。</p>
+</div>
+<h4 id="m13-c8">分支 B：IGS_WSI —— WSI 模式（:117–137）</h4>
+<pre><code><span class="kw">case</span> RISCV_IOMMU_CAPABILITIES_IGS_WSI:
+    ret = platform_irq_count(pdev);            <span class="cmt">// 数设备树/ACPI 里的 IRQ 资源</span>
+    <span class="kw">if</span> (ret &lt;= <span class="num">0</span>) <span class="kw">return</span> dev_err_probe(dev, -ENODEV, <span class="str">"no IRQ resources provided\n"</span>);
+
+    iommu-&gt;irqs_count = ret;
+    <span class="kw">if</span> (iommu-&gt;irqs_count &gt; RISCV_IOMMU_INTR_COUNT)
+        iommu-&gt;irqs_count = RISCV_IOMMU_INTR_COUNT;   <span class="cmt">// 截断到最多 4</span>
+
+    <span class="kw">for</span> (vec = <span class="num">0</span>; vec &lt; iommu-&gt;irqs_count; vec++)
+        iommu-&gt;irqs[vec] = platform_get_irq(pdev, vec);  <span class="cmt">// 逐条取线中断</span>
+
+    <span class="cmt">// 置位 fctl.WSI</span>
+    <span class="kw">if</span> (!(iommu-&gt;fctl &amp; RISCV_IOMMU_FCTL_WSI)) {
+        iommu-&gt;fctl |= RISCV_IOMMU_FCTL_WSI;
+        riscv_iommu_writel(iommu, RISCV_IOMMU_REG_FCTL, iommu-&gt;fctl);
+    }
+    dev_info(dev, <span class="str">"using wire-signaled interrupts\n"</span>);
+    <span class="kw">break</span>;</code></pre>
+<p>WSI（Wire-Signaled Interrupt）就是<strong>传统线中断</strong>：4 类事件各占一根中断线，由 <code>platform_get_irq</code> 逐条解析（设备树 <code>interrupts</code> 或 ACPI <code>_CRS</code>）。中断数按实际 IRQ 资源数来，最多 4 根。WSI 模式下要<strong>置位</strong> fctl.WSI（和 MSI 模式相反）。</p>
+<h4 id="m13-c9">分支 C：default（:138–139）</h4>
+<pre><code><span class="kw">default</span>:
+    <span class="kw">return</span> dev_err_probe(dev, -ENODEV, <span class="str">"invalid IGS\n"</span>);   <span class="cmt">// 值 3 = reserved</span></code></pre>
+<h4 id="m13-c10">④ 交给核心（:142）</h4>
+<pre><code><span class="kw">return</span> riscv_iommu_init(iommu);</code></pre>
+<h3 id="m13-c11">13.4 remove 与 shutdown（:145–159）</h3>
+<pre><code><span class="kw">static</span> <span class="kw">void</span> riscv_iommu_platform_remove(<span class="kw">struct</span> <span class="type">platform_device</span> *pdev)
+{
+    <span class="kw">bool</span> msi = !(iommu-&gt;fctl &amp; RISCV_IOMMU_FCTL_WSI);   <span class="cmt">// WSI 没置位 → 走的是 MSI</span>
+    riscv_iommu_remove(iommu);
+    <span class="kw">if</span> (msi)
+        platform_device_msi_free_irqs_all(&amp;pdev-&gt;dev);   <span class="cmt">// 只 MSI 需要额外释放</span>
+}
+
+<span class="kw">static</span> <span class="kw">void</span> riscv_iommu_platform_shutdown(<span class="kw">struct</span> <span class="type">platform_device</span> *pdev)
+{
+    riscv_iommu_disable(dev_get_drvdata(&amp;pdev-&gt;dev));
+}</code></pre>
+<p><code>remove</code> 时看 <code>fctl.WSI</code> 位——没置位说明当时走的是 MSI，需要 <code>platform_device_msi_free_irqs_all</code> 释放 MSI；WSI 的线中断由 platform 核心统一管理，不用手动释放。<code>shutdown</code> 语义与 PCI 版一致：仅停翻译，不回收资源。</p>
+<h3 id="m13-c12">13.5 匹配表与注册（:161–184）</h3>
+<pre><code><span class="kw">static</span> <span class="kw">const</span> <span class="kw">struct</span> <span class="type">of_device_id</span> riscv_iommu_of_match[] = {
+    { .compatible = <span class="str">"riscv,iommu"</span>, },     <span class="cmt">// 设备树 compatible 字符串</span>
+    {},
+};
+
+<span class="kw">static</span> <span class="kw">const</span> <span class="kw">struct</span> <span class="type">acpi_device_id</span> riscv_iommu_acpi_match[] = {
+    { <span class="str">"RSCV0004"</span>, <span class="num">0</span> },                    <span class="cmt">// ACPI _HID</span>
+    {}
+};
+MODULE_DEVICE_TABLE(acpi, riscv_iommu_acpi_match);
+
+<span class="kw">static</span> <span class="kw">struct</span> <span class="type">platform_driver</span> riscv_iommu_platform_driver = {
+    .probe    = riscv_iommu_platform_probe,
+    .remove   = riscv_iommu_platform_remove,
+    .shutdown = riscv_iommu_platform_shutdown,
+    .driver = {
+        .name = <span class="str">"riscv,iommu"</span>,
+        .of_match_table = riscv_iommu_of_match,
+        .suppress_bind_attrs = <span class="kw">true</span>,
+        .acpi_match_table = riscv_iommu_acpi_match,
+    },
+};
+
+builtin_platform_driver(riscv_iommu_platform_driver);</code></pre>
+<p>同一驱动<strong>同时注册 OF 和 ACPI 两套匹配</strong>：设备树用 compatible <code>riscv,iommu</code>，ACPI 用 _HID <code>RSCV0004</code>。<code>suppress_bind_attrs = true</code> 禁止 sysfs 手动 bind/unbind。<code>builtin_platform_driver</code> 编译进内核，启动时自动注册。</p>
+<h3 id="m13-c13">13.6 两个接入层对比</h3>
+<table>
+<tr><th>维度</th><th><code>iommu-pci.c</code></th><th><code>iommu-platform.c</code></th></tr>
+<tr><td>设备形态</td><td>PCIe 设备</td><td>平台设备（DT/ACPI 描述）</td></tr>
+<tr><td>寄存器映射</td><td><code>pcim_iomap_regions</code> 读 BAR0</td><td><code>devm_platform_get_and_ioremap_resource</code></td></tr>
+<tr><td>中断模式</td><td><strong>只用 MSI/MSI-X</strong></td><td><strong>MSI + WSI 双模式</strong>，按 <code>IGS</code> 分支</td></tr>
+<tr><td>中断数弹性</td><td>1–4（按需）</td><td>固定 4（MSI）/ 按 IRQ 资源数（WSI）</td></tr>
+<tr><td>MSI 消息写入</td><td>PCI MSI capability（内核代劳）</td><td><strong>软件写内部 MSI 配置表</strong></td></tr>
+<tr><td>降级逻辑</td><td>无（不支持 MSI 直接失败）</td><td>MSI 失败 + <code>IGS=BOTH</code> 时 <code>fallthrough</code> 降级到 WSI</td></tr>
+<tr><td>匹配方式</td><td>vendor/device ID</td><td>compatible（OF）+ _HID（ACPI）</td></tr>
+</table>
+<div class="callout green">
+<div class="title">核心差异一句话</div>
+<p class="lead" style="margin:0">PCI 设备的 MSI 是标准 capability，内核 PCI 层自动处理；平台设备的 MSI 没有标准结构，所以 RISC-V IOMMU 规范定义了内部的 <strong>MSI 配置表</strong>，驱动要自己写 <code>write_msi_msg</code> 回调把地址/数据填进去。</p>
+</div>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>

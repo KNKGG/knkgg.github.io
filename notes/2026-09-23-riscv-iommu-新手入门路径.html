@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>RISC-V IOMMU 驱动 · 从零入门路径</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+/* ---------- 侧边栏 ---------- */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+#toc .lvl3 { font-size: 0.78rem; padding-left: 2.4rem; color: var(--ink-mute); }
+
+/* ---------- 内容区 ---------- */
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+/* ---------- hero ---------- */
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub, header.hero .subtitle { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+/* ---------- 卡片 ---------- */
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3, h4 {
+  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
+  scroll-margin-top: 1.5rem;
+}
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+em, i { font-style: italic; }
+
+/* ---------- tag pill ---------- */
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+/* ---------- 代码 ---------- */
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+pre code .kw   { color: #1E3A8A; font-weight: 600; }
+pre code .str  { color: #C04E1A; }
+pre code .num  { color: #9a6a00; }
+pre code .type { color: #5b3fbf; }
+pre code .cmt  { color: #3f6b4f; }
+pre.diagram {
+  background: var(--paper-soft); color: var(--ink);
+  border: 1px solid var(--rule); font-size: 0.82rem; line-height: 1.55;
+}
+
+/* ---------- 流程图 diagram ---------- */
+.diagram { margin: 1.2rem 0; }
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.7rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.92rem; color: var(--ink); font-weight: 600; line-height: 1.5; }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.25rem; line-height: 1.55; }
+.layer .desc code, .layer .name code { color: var(--accent); }
+.layer.blue   { border-color: var(--accent);   background: color-mix(in oklab, var(--accent), transparent 95%); }
+.layer.orange { border-color: var(--accent-2); background: color-mix(in oklab, var(--accent-2), transparent 95%); }
+.layer.amber  { border-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 95%); }
+.layer.green  { border-color: var(--green);    background: color-mix(in oklab, var(--green), transparent 94%); }
+.layer.red    { border-color: var(--red);      background: color-mix(in oklab, var(--red), transparent 96%); }
+.layer.m1 { border-color: #E6B3C2; background: #FAEDF2; }
+.layer.m2 { border-color: #E7C0AC; background: #FAF0E8; }
+.layer.m3 { border-color: #B5CFBC; background: #EFF6F1; }
+.layer.m4 { border-color: #B0C6DE; background: #EEF4F9; }
+.layer.m5 { border-color: #C4B8D6; background: #F2EFF7; }
+
+.arrow { text-align: center; color: var(--ink-mute); font-size: 0.82rem; padding: 0.4rem 0; }
+.arrow b, .arrow strong { color: var(--ink); }
+.split { display: flex; gap: 0.9rem; }
+.split > div { flex: 1; }
+
+/* 水平流程 */
+.flow-h { display: flex; align-items: stretch; gap: 0.5rem; flex-wrap: wrap; }
+.flow-h .layer { flex: 1; min-width: 120px; display: flex; flex-direction: column; justify-content: center; }
+.flow-h .arrow { align-self: center; flex: none; padding: 0 0.1rem; }
+
+/* 位域条 */
+.bitfield { display: flex; border: 1.5px solid var(--rule-strong); border-radius: 8px; overflow: hidden; margin: 0.7rem 0; }
+.bitfield > span { padding: 0.5rem 0.3rem; text-align: center; font-size: 0.78rem; color: var(--ink-soft); border-right: 1px solid var(--rule); background: var(--paper-soft); }
+.bitfield > span:last-child { border-right: none; }
+
+
+/* 垂直下钻流程（连接线 + 索引标签） */
+.vflow { display: flex; flex-direction: column; align-items: center; }
+.vflow > .layer, .vflow > .split { width: 100%; max-width: 480px; }
+.vflow .link {
+  position: relative; width: 2px; height: 46px; flex: none;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+}
+.vflow .link::after {
+  content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent; border-right: 6px solid transparent;
+  border-top: 9px solid var(--accent-2);
+}
+.vflow .link .lbl {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  white-space: nowrap; font-size: 0.76rem; color: var(--ink-soft);
+  background: var(--paper-soft); border: 1px solid var(--rule);
+  padding: 1px 9px; border-radius: 11px;
+}
+@media (max-width: 640px) { .split, .flow-h { flex-direction: column; } }
+.hl-amber  { color: #a86f10; font-weight: 600; }
+.hl-red    { color: #bc3946; font-weight: 600; }
+.hl-green  { color: #1f7a52; font-weight: 600; }
+.hl-accent { color: #1E3A8A; font-weight: 600; }
+
+/* ---------- 表格 ---------- */
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+/* ---------- callout ---------- */
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+/* ---------- analogy ---------- */
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+/* ---------- blockquote ---------- */
+blockquote {
+  margin: 1.2rem 0; padding: 0.8rem 1.3rem;
+  border-left: 3px solid var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2), transparent 95%);
+  border-radius: 0 10px 10px 0; font-style: italic; color: var(--ink-soft);
+}
+blockquote p:last-child { margin-bottom: 0; }
+blockquote .src {
+  display: block; margin-top: 0.6rem;
+  color: var(--ink-mute); font-size: 0.8rem; font-style: normal;
+}
+
+/* ---------- verdict / note（cache_coherency 专用） ---------- */
+.verdict {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  border-radius: 0 10px 10px 0; padding: 1.1rem 1.4rem;
+  margin: 1.4rem 0; font-size: 1.02rem;
+}
+.verdict strong { color: var(--accent); }
+.note {
+  border-left: 4px solid var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 94%);
+  border-radius: 0 10px 10px 0; padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0; color: var(--ink-soft); font-size: 0.92rem;
+}
+
+/* ---------- 分层图 diagram（cache_coherency 专用） ---------- */
+.diagram { margin: 1.2rem 0; }
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.8rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.95rem; color: var(--ink); }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.2rem; }
+.layer.src   { border-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.layer.cache { border-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 95%); }
+.layer.dev   { border-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.arrow { text-align: center; color: var(--ink-mute); font-size: 0.82rem; padding: 0.4rem 0; }
+.arrow b { color: var(--ink); }
+.split { display: flex; gap: 0.9rem; }
+.split > div { flex: 1; }
+@media (max-width: 640px) { .split { flex-direction: column; } }
+
+.foot {
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+  color: var(--ink-mute); font-size: 0.8rem;
+}
+
+/* ---------- 列表 ---------- */
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+/* ---------- 动画播放器 ---------- */
+.anim { margin: 1.4rem 0; }
+.anim-controls { display: flex; gap: 0.6rem; margin-bottom: 0.9rem; align-items: center; flex-wrap: wrap; }
+.anim-controls button {
+  background: var(--card); color: var(--ink); border: 1px solid var(--rule-strong);
+  padding: 0.45rem 1.1rem; border-radius: 8px; cursor: pointer;
+  font-size: 0.85rem; font-family: inherit; transition: all .15s;
+}
+.anim-controls button:hover { border-color: var(--accent); color: var(--accent); }
+.anim-controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.anim-controls button.primary:hover { background: #162a5e; }
+.anim-controls .hint { color: var(--ink-mute); font-size: 0.8rem; }
+
+.steps { display: flex; flex-direction: column; gap: 0.6rem; }
+.step {
+  background: var(--paper-soft); border: 1px solid var(--rule); border-radius: 12px;
+  padding: 0.9rem 1.1rem; opacity: .55; transform: translateX(-4px);
+  transition: opacity .35s, transform .35s, border-color .35s, box-shadow .35s, background .35s;
+}
+.step.active {
+  opacity: 1; transform: translateX(0);
+  border-color: var(--accent); background: var(--card);
+  box-shadow: 0 0 0 1px rgba(79,70,229,.22), 0 8px 24px rgba(79,70,229,.12);
+}
+.step .step-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+.step .dot {
+  width: 1.45rem; height: 1.45rem; border-radius: 50%;
+  background: var(--rule-strong); color: var(--ink-mute);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; flex: none; transition: all .3s; font-family: var(--font-en);
+}
+.step.active .dot { background: var(--accent); color: #fff; font-weight: 600; }
+.step .step-title { font-size: 0.98rem; color: var(--ink); }
+.step .step-body { font-size: 0.88rem; color: var(--ink-soft); }
+.step .step-body code { color: #a86f10; background: color-mix(in oklab, var(--accent-3), transparent 88%); }
+.step pre { margin: 0.6rem 0 0; font-size: 0.8rem; }
+
+/* ---------- 时序图 ---------- */
+.timeline { margin: 1.2rem 0; }
+.lane { display: flex; align-items: stretch; min-height: 46px; border-bottom: 1px solid var(--rule); }
+.lane .label {
+  width: 110px; flex: none; font-size: 0.78rem; color: var(--ink-mute);
+  padding: 0.8rem 0.7rem; border-right: 1px solid var(--rule);
+  background: var(--paper-soft); display: flex; align-items: center;
+}
+.lane .track { flex: 1; position: relative; }
+.evt {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: var(--card); border: 1px solid var(--rule-strong); border-radius: 8px;
+  padding: 0.3rem 0.7rem; font-size: 0.75rem; color: var(--ink); white-space: nowrap;
+  opacity: .35; transition: opacity .4s, border-color .4s, box-shadow .4s;
+}
+.evt.active { opacity: 1; border-color: var(--accent); box-shadow: 0 0 10px rgba(79,70,229,.25); }
+.evt.amber.active { border-color: var(--accent-3); box-shadow: 0 0 10px rgba(217,154,43,.25); }
+.evt.red.active   { border-color: var(--red); box-shadow: 0 0 10px rgba(214,69,80,.25); }
+.evt.green.active { border-color: var(--green); box-shadow: 0 0 10px rgba(47,158,110,.25); }
+
+footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-top: 3rem; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul><li><a class="lvl1" href="#concept">1. 第一站：概念</a><ul><li><a class="lvl2" href="#concept-c1">1.1 IOMMU 是什么</a><ul></ul></li><li><a class="lvl2" href="#concept-c2">1.2 它和 MMU 的关系</a><ul></ul></li><li><a class="lvl2" href="#concept-c3">1.3 三个用途</a><ul></ul></li><li><a class="lvl2" href="#concept-c4">1.4 术语表（先混个脸熟）</a><ul></ul></li></ul></li><li><a class="lvl1" href="#hardware">2. 第二站：硬件模型</a><ul><li><a class="lvl2" href="#hardware-c1">2.1 寄存器：软件和硬件的「对话窗口」</a><ul></ul></li><li><a class="lvl2" href="#hardware-c2">2.2 数据结构①：设备目录表 DDT + 设备上下文 DC</a><ul></ul></li><li><a class="lvl2" href="#hardware-c3">2.3 数据结构②：页表</a><ul></ul></li><li><a class="lvl2" href="#hardware-c4">2.4 数据结构③：两个队列 CQ 和 FQ</a><ul></ul></li></ul></li><li><a class="lvl1" href="#software">3. 第三站：软件机制</a><ul><li><a class="lvl2" href="#software-c1">3.0 一个驱动，如何管多颗 IOMMU？</a><ul><li><a class="lvl3" href="#software-c2">用 UVM 的话说</a></li><li><a class="lvl3" href="#software-c3">实际发生的事：probe 被调用几次</a></li><li><a class="lvl3" href="#software-c4">代码怎么知道操作哪颗？看参数</a></li><li><a class="lvl3" href="#software-c5">共享什么、独立什么</a></li></ul></li><li><a class="lvl2" href="#software-c6">3.1 读写寄存器：relaxed 宏</a><ul></ul></li><li><a class="lvl2" href="#software-c7">3.2 队列怎么操作：无界 shadow 索引</a><ul></ul></li><li><a class="lvl2" href="#software-c8">3.3 一条命令的入队过程（黄金例子）</a><ul></ul></li><li><a class="lvl2" href="#software-c9">3.4 发命令 + 等完成</a><ul></ul></li><li><a class="lvl2" href="#software-c10">3.5 domain：软件侧的组织单位</a><ul></ul></li></ul></li><li><a class="lvl1" href="#dataflow">4. 第四站：数据流</a><ul><li><a class="lvl2" href="#dataflow-c1">4.1 device id 从哪来</a><ul></ul></li><li><a class="lvl2" href="#dataflow-c2">4.2 查 DDT：多级目录遍历</a><ul></ul></li><li><a class="lvl2" href="#dataflow-c3">4.3 页表翻译 IOVA → PA</a><ul></ul></li><li><a class="lvl2" href="#dataflow-c4">4.4 翻译结果</a><ul></ul></li></ul></li><li><a class="lvl1" href="#lifecycle">5. 第五站：生命周期</a><ul><li><a class="lvl2" href="#lifecycle-c1">5.1 启动：probe → init</a><ul></ul></li><li><a class="lvl2" href="#lifecycle-c2">5.2 设备接入：probe_device → attach</a><ul><li><a class="lvl3" href="#lifecycle-c3">iodir_update 的两遍式更新（关键！）</a></li></ul></li><li><a class="lvl2" href="#lifecycle-c4">5.3 页表变更：unmap → IOTLB 失效</a><ul></ul></li><li><a class="lvl2" href="#lifecycle-c5">5.4 故障处理</a><ul></ul></li><li><a class="lvl2" href="#lifecycle-c6">5.5 收尾：remove / shutdown</a><ul></ul></li></ul></li><li><a class="lvl1" href="#bus">6. 第六站：两个接入层</a><ul><li><a class="lvl2" href="#bus-c1">6.1 PCIe 接入（iommu-pci.c）</a><ul></ul></li><li><a class="lvl2" href="#bus-c2">6.2 平台接入（iommu-platform.c）</a><ul></ul></li><li><a class="lvl2" href="#bus-c3">6.3 对比</a><ul></ul></li></ul></li></ul></nav></aside><main class="content"><header class="hero">
+<h1>RISC-V IOMMU 驱动 · 从零入门路径</h1>
+<div class="sub">给完全没碰过 Linux 内核源码的人：先认概念 → 再看硬件 → 再学机制 → 最后串成一条完整故事</div>
+<div class="meta">
+    源码 <code>drivers/iommu/riscv/</code>：<code>iommu.c</code>（1651 行）· <code>iommu-bits.h</code>（811 行）· <code>iommu.h</code>（91 行）· <code>iommu-pci.c</code>（129 行）· <code>iommu-platform.c</code>（185 行） ·
+    对照 RISC-V IOMMU Architecture Specification v1.0
+  </div>
+</header><section class="card" id="concept">
+<h2><span class="no">1</span>第一站：概念 <span class="tag purple">不碰代码</span></h2>
+<p class="ref">这一站的目标：在不读任何代码的前提下，建立对 IOMMU 的直觉和词汇表</p>
+<h3 id="concept-c1">1.1 IOMMU 是什么</h3>
+<p class="lead"><strong>IOMMU = Input/Output Memory Management Unit</strong>（输入输出内存管理单元）。它是插在<strong>外设</strong>和<strong>物理内存</strong>之间的硬件，功能是：把外设发出的地址（IOVA，I/O 虚拟地址）翻译成真实的物理地址，并检查外设有没有权限访问那块内存。</p>
+<div class="analogy">
+<div class="lbl">类比：写字楼的前台门卫</div>
+<p style="margin:6px 0 0">物理内存 = 写字楼。CPU = 业主，有自己的门禁（MMU）。外设（网卡/显卡/硬盘）= 访客。</p>
+<p style="margin:6px 0 0">没有 IOMMU：访客进出不查身份证，网卡说「读写 0x8000」，内存控制器就照做——一个坏掉或被黑的设备可以读走内核机密、写坏系统内存。</p>
+<p style="margin:6px 0 0">有了 IOMMU：每个访客进门要报「我是哪个设备」（device id），门卫查登记簿（DDT/DC）翻译地址、核对权限。没有登记的访客、越界的访问，一律拦下并记录（fault）。</p>
+</div>
+<h3 id="concept-c2">1.2 它和 MMU 的关系</h3>
+<table>
+<tr><th></th><th>MMU（CPU 用）</th><th>IOMMU（设备用）</th></tr>
+<tr><td>服务对象</td><td>CPU 的访存</td><td>外设的 DMA</td></tr>
+<tr><td>翻译的地址</td><td>虚拟地址 VA → 物理地址 PA</td><td>I/O 虚拟地址 IOVA → 物理地址 PA</td></tr>
+<tr><td>页表</td><td>进程页表（<code>satp</code> 指向）</td><td>设备上下文 DC 里的页表（<code>fsc</code> 指向）</td></tr>
+<tr><td>出错</td><td>缺页异常</td><td>写 Fault 队列 + 中断</td></tr>
+</table>
+<p class="lead">一句话：<strong>IOMMU 是「给设备用的 MMU」</strong>。如果懂 CPU 的 MMU/页表，理解 IOMMU 会非常快，因为概念几乎一一对应。</p>
+<h3 id="concept-c3">1.3 三个用途</h3>
+<ul>
+<li><strong>内存保护</strong>：只给设备映射它有权访问的内存，坏设备乱写内存会被拦截。</li>
+<li><strong>设备直通虚拟化</strong>：把设备直通给虚拟机时，用两级翻译（客户地址 → 宿主物理地址）。</li>
+<li><strong>地址空间整理</strong>：把碎片化的物理内存映射成连续的 IOVA，让设备看到连续地址。</li>
+</ul>
+<h3 id="concept-c4">1.4 术语表（先混个脸熟）</h3>
+<p class="lead">下面这些词会反复出现。现在只需要「知道它大概是什么」，具体细节后面每站展开。</p>
+<table>
+<tr><th>术语</th><th>全称</th><th>一句话解释</th><th>哪里详细讲</th></tr>
+<tr><td><code>device id</code></td><td>Device Identifier</td><td>每个设备的编号，PCIe 就是 BDF</td><td>第四站</td></tr>
+<tr><td><code>DDT</code></td><td>Device Directory Table</td><td>设备目录表：从 device id 找到设备上下文</td><td>第二站</td></tr>
+<tr><td><code>DC</code></td><td>Device Context</td><td>设备上下文：存着页表指针和进程号</td><td>第二站</td></tr>
+<tr><td><code>IOVA</code></td><td>I/O Virtual Address</td><td>设备发出的虚拟地址</td><td>第四站</td></tr>
+<tr><td><code>GPA / HPA</code></td><td>Guest/ Host Physical Address</td><td>虚拟化里客户物理地址 / 宿主物理地址</td><td>第四站</td></tr>
+<tr><td><code>PSCID</code></td><td>Process Soft Context ID</td><td>软件分配的进程号，给 IOTLB 条目贴标签</td><td>第二站</td></tr>
+<tr><td><code>GSCID</code></td><td>Guest Soft Context ID</td><td>二级翻译用的客户上下文号</td><td>第二站</td></tr>
+<tr><td><code>IOTLB</code></td><td>I/O Translation Lookaside Buffer</td><td>IOMMU 内部的翻译缓存</td><td>第五站</td></tr>
+<tr><td><code>domain</code></td><td>—</td><td>一组页表 + 一个 PSCID，可被多个设备共享</td><td>第三站</td></tr>
+<tr><td><code>fault</code></td><td>—</td><td>翻译失败时硬件上报的错误事件</td><td>第二站</td></tr>
+<tr><td><code>CQ / FQ</code></td><td>Command / Fault Queue</td><td>命令队列（软件→硬件）/ Fault 队列（硬件→软件）</td><td>第二站</td></tr>
+<tr><td><code>MMIO</code></td><td>Memory-Mapped I/O</td><td>把寄存器映射成内存地址来读写</td><td>第三站</td></tr>
+</table>
+<div class="callout green">
+<div class="title">怎么读这份文档</div>
+<p class="lead" style="margin:0">六站按顺序读：<strong>概念（建立直觉）→ 硬件模型（认识零件）→ 软件机制（学会操作）→ 数据流（看懂全貌）→ 生命周期（串起来）→ 接入层（收尾）</strong>。每站都会引用真实源码和行号，但代码不是主角，<strong>「为什么这么设计」才是</strong>。看不懂某个细节就先跳过，后面会兜回来。</p>
+</div>
+</section><section class="card" id="hardware">
+<h2><span class="no">2</span>第二站：硬件模型 <span class="tag amber">认识零件</span></h2>
+<p class="ref">IOMMU 硬件 = 一组寄存器 + 三块内存数据结构。先把零件认全。</p>
+<h3 id="hardware-c1">2.1 寄存器：软件和硬件的「对话窗口」</h3>
+<p>IOMMU 的控制寄存器映射成一段 4 KB 的内存（MMIO，<code>RISCV_IOMMU_REG_SIZE = 0x1000</code>）。软件读这些地址就是读寄存器、写就是配寄存器。核心寄存器（<code>iommu-bits.h:41-296</code>）：</p>
+<table>
+<tr><th>偏移</th><th>名称</th><th>宽度</th><th>作用</th></tr>
+<tr><td><code>0x0000</code></td><td>CAPABILITIES</td><td>64</td><td><strong>只读</strong>能力位图：硬件支持哪些特性（SV39/SV48/SV57、ATS、MSI、IGS 中断模式…）</td></tr>
+<tr><td><code>0x0008</code></td><td>FCTL</td><td>32</td><td>特性控制：<code>BE[0]</code> 字节序、<code>WSI[1]</code> 线中断、<code>GXL[2]</code></td></tr>
+<tr><td><code>0x0010</code></td><td>DDTP</td><td>64</td><td>设备目录表指针：<code>MODE[3:0]</code> 目录层级、<code>PPN[53:10]</code> 根表物理页号</td></tr>
+<tr><td><code>0x0018</code>–<code>0x0044</code></td><td>CQ/FQ/PQ 的 Base/Head/Tail</td><td>—</td><td>三个队列的基地址和读写指针</td></tr>
+<tr><td><code>0x0048</code>–<code>0x0050</code></td><td>CQCSR/FQCSR/PQCSR</td><td>32</td><td>队列控制状态：使能/中断/错误位</td></tr>
+<tr><td><code>0x0054</code></td><td>IPSR</td><td>32</td><td>中断挂起状态：4 个位对应 4 类中断</td></tr>
+<tr><td><code>0x02F8</code></td><td>ICVEC</td><td>64</td><td>中断源→向量映射</td></tr>
+<tr><td><code>0x0300</code></td><td>MSI_CFG_TBL</td><td>—</td><td>平台设备发 MSI 用的配置表</td></tr>
+</table>
+<p>读能力寄存器的典型用法：硬件上电后，软件先读 <code>CAPABILITIES</code>，看它支持 SV39 还是 SV48、支持 MSI 还是 WSI，再据此配置。<code>fctl</code> 是少数几个<strong>可写</strong>的寄存器之一（其余大多是只读或需要特殊序列）。</p>
+<h3 id="hardware-c2">2.2 数据结构①：设备目录表 DDT + 设备上下文 DC</h3>
+<p>这是「访客登记簿」。DDT 是一个<strong>多级表（最多 3 级）</strong>，根地址在 <code>DDTP</code> 寄存器。逐级下钻后落到<strong>叶子节点 = 设备上下文 DC</strong>。</p>
+<div class="vflow">
+<div class="layer m1">
+<div class="name">DDTP 寄存器</div>
+<div class="desc">根表指针（第 1 级）</div>
+</div>
+<div class="link"><span class="lbl">表项[DDI[0]]：下一级表地址 + V</span></div>
+<div class="layer m2">
+<div class="name">第 2 级表</div>
+</div>
+<div class="link"><span class="lbl">表项[DDI[1]]：下一级表地址 + V</span></div>
+<div class="layer m3">
+<div class="name">第 3 级表</div>
+</div>
+<div class="link"><span class="lbl">表项[DDI[2]]：指向设备上下文 DC</span></div>
+<div class="layer m4">
+<div class="name">DC 设备上下文（32 或 64 字节）</div>
+<div class="desc"><code>tc</code> 翻译控制（开关）· <code>ta</code> PSCID（进程号）<br><code>fsc</code> 一级页表指针 · <code>iohgatp</code> 二级页表指针（虚拟化）</div>
+</div>
+</div>
+
+<p>DC 结构体（<code>iommu-bits.h:326-335</code>）和关键字段：</p>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_dc</span> {
+    <span class="type">u64</span> tc;        <span class="cmt">// 翻译控制：V[0]=有效位（总开关）</span>
+    <span class="type">u64</span> iohgatp;   <span class="cmt">// 二级页表（虚拟化用，普通场景 = BARE 关闭）</span>
+    <span class="type">u64</span> ta;        <span class="cmt">// 翻译属性：PSCID[31:12] 进程号</span>
+    <span class="type">u64</span> fsc;       <span class="cmt">// 一级页表：PPN[43:0] + MODE[63:60]（SV39/SV48/SV57）</span>
+    <span class="cmt">// 以下 4 个字段仅 extended 格式（MSI_FLAT）才有，做 MSI 虚拟化</span>
+    <span class="type">u64</span> msiptp, msi_addr_mask, msi_addr_pattern, _reserved;
+};</code></pre>
+<p>两个最容易混的概念：</p>
+<ul>
+<li><strong><code>tc.V</code>（BIT 0）= 总开关</strong>：等于 0 时，这个设备发任何 DMA 都会被拒绝（fault cause 258 DDT_INVALID）。驱动「阻断」设备就是清这个位。</li>
+<li><strong><code>ta.PSCID</code>（bit 12–31）= 进程号</strong>：一个 20 bit 的软件编号，用于给 IOTLB 缓存条目贴标签，失效时按它精准清除。范围 <code>1..2^20-1</code>，驱动用 <code>IDA</code> 分配器管理。</li>
+</ul>
+<h3 id="hardware-c3">2.3 数据结构②：页表</h3>
+<p>页表负责「IOVA → 物理地址」的映射，和 CPU 页表一样是多级结构。RISC-V 用 4 KiB 页、<strong>每级 9 bit 索引</strong>：SV39 三级（39 bit 地址）、SV48 四级、SV57 五级。</p>
+<p>关键：<strong>驱动不手写页表</strong>，复用内核通用页表库 <code>generic_pt</code>（<code>pt_iommu_riscv_64</code>）。驱动只告诉库「用 SV39/SV48/SV57 哪种模式」，PTE 的分配/填充/释放由库完成。这是 Linux IOMMU 驱动的常见分工：页表是通用件。</p>
+<h3 id="hardware-c4">2.4 数据结构③：两个队列 CQ 和 FQ</h3>
+<p>DDT 和页表是「静态数据」，但运行时还有两类「动态通信」：</p>
+<table>
+<tr><th>队列</th><th>方向</th><th>承载什么</th><th>例子</th></tr>
+<tr><td>命令队列 CQ</td><td>软件 → 硬件</td><td>维护命令（16 字节/条）</td><td>「刷新 IOTLB」「失效目录缓存」</td></tr>
+<tr><td>Fault 队列 FQ</td><td>硬件 → 软件</td><td>错误事件（32 字节/条）</td><td>「设备 3 访问了没映射的地址」</td></tr>
+</table>
+<p>两条队列都是<strong>环形缓冲区</strong>，各配一组寄存器：Base（基地址+长度）、Head（读指针）、Tail（写指针）、CSR（控制状态）。队列的长度是 2 的幂（命令队列默认 8192 条、Fault 队列 4096 条）。</p>
+<p>命令的格式：16 字节 = 两个 u64，第一个 u64 的低 7 bit 是 <strong>opcode</strong>（<code>iommu-bits.h:459-462</code>）：</p>
+<table>
+<tr><th>opcode</th><th>名称</th><th>作用</th></tr>
+<tr><td><code>1</code></td><td>IOTINVAL</td><td>失效 IOTLB 翻译缓存</td></tr>
+<tr><td><code>2</code></td><td>IOFENCE</td><td>同步屏障，等前面命令执行完</td></tr>
+<tr><td><code>3</code></td><td>IODIR</td><td>失效设备目录/进程目录缓存</td></tr>
+<tr><td><code>4</code></td><td>ATS</td><td>PCIe ATS 相关</td></tr>
+</table>
+<p>Fault 记录的格式（32 字节 = 4 个 u64，<code>iommu-bits.h:543-548</code>）：头部 u64 里有 <code>CAUSE[11:0]</code>（原因码）、<code>DID[63:40]</code>（发起设备 id）、<code>TTYP[39:34]</code>（读/写/取指类型），后面两个 u64 是出错地址等附加信息。</p>
+<div class="callout purple">
+<div class="title">第二站小结：硬件 = 一组寄存器 + 三块内存</div>
+<p class="lead" style="margin:0">寄存器是「控制面板」，DDT/DC 是「登记簿」，页表是「翻译字典」，命令队列是「对讲机（软件对硬件说话）」，Fault 队列是「报警器（硬件对软件说话）」。记住这五个零件，后面都是围绕它们展开。</p>
+</div>
+</section><section class="card" id="software">
+<h2><span class="no">3</span>第三站：软件机制 <span class="tag purple">学会操作</span></h2>
+<p class="ref">软件怎么读写寄存器、怎么操作队列、怎么发命令</p>
+<h3 id="software-c1">3.0 一个驱动，如何管多颗 IOMMU？</h3>
+<p class="lead">先破一个误解：Linux 的「驱动」不是一个运行中的进程或对象，而是 <strong>一份代码 + 每个硬件一个数据结构</strong>。系统里有几颗 IOMMU，就有几个 <code>struct riscv_iommu_device</code>，各自独立、互不干扰；而操作它们的函数代码，内存里只有一份。</p>
+<h4 id="software-c2">用 UVM 的话说</h4>
+<p>C 语言没有 class，但 Linux 驱动用 struct 模拟了同样的「对象」概念：</p>
+<table>
+<tr><th>UVM</th><th>Linux 驱动</th></tr>
+<tr><td><code>class iommu_agent</code> 定义（一份代码）</td><td>驱动代码 <code>iommu.c</code>（一份）</td></tr>
+<tr><td><code>new("agent0")</code> 实例化</td><td><code>devm_kzalloc</code> 分配一个 struct（每个硬件一次）</td></tr>
+<tr><td>成员变量 <code>this.reg_value</code></td><td>字段 <code>iommu-&gt;reg</code>、<code>iommu-&gt;caps</code></td></tr>
+<tr><td>方法 <code>write_reg()</code></td><td>函数 <code>riscv_iommu_init(iommu)</code></td></tr>
+<tr><td><code>agent0.write_reg()</code> 只改 agent0</td><td><code>riscv_iommu_init(A)</code> 只操作 A 这颗硬件</td></tr>
+</table>
+<p><strong>方法（代码）共享，成员（数据）独立。</strong>UVM 里一个 class 能 new 出无数个 agent，每个 agent 的成员互不影响；Linux 驱动里一份代码，probe 每发现一颗 IOMMU 就 new 出一个 struct。</p>
+<h4 id="software-c3">实际发生的事：probe 被调用几次</h4>
+<p>主板上有两颗 IOMMU 时，内核扫描 PCI 总线发现两颗，PCI 框架的规则是<strong>匹配到几个设备，<code>probe</code> 就回调几次</strong>（<code>iommu-pci.c:33</code>）：</p>
+<pre><code>iommu = devm_kzalloc(dev, <span class="kw">sizeof</span>(*iommu), GFP_KERNEL);  <span class="cmt">// new 一个实例</span>
+iommu-&gt;dev = dev;
+iommu-&gt;reg = pcim_iomap_table(pdev)[<span class="num">0</span>];                 <span class="cmt">// 记下"这颗"的寄存器地址</span>
+...
+<span class="kw">return</span> riscv_iommu_init(iommu);                          <span class="cmt">// 初始化"这颗"</span></code></pre>
+<p>第一次调用时 <code>pdev</code> 是 IOMMU A，分配出文件夹 A；第二次是 IOMMU B，分配出文件夹 B。<strong>同一段代码跑两遍，每遍拿到的参数不同，操作的就是不同的硬件。</strong></p>
+<div class="vflow">
+<div class="layer m1">
+<div class="name">代码（一份）</div>
+<div class="desc">probe / init / send ...</div>
+</div>
+<div class="link"><span class="lbl">参数传入哪个文件夹，就操作哪个</span></div>
+<div class="split">
+<div class="layer m2">
+<div class="name">文件夹 A</div>
+<div class="desc"><code>reg</code> → A 寄存器 · <code>cmdq</code> → A 队列 · <code>caps</code> → A 能力<br>对应 <strong>IOMMU A</strong> 硬件</div>
+</div>
+<div class="layer m3">
+<div class="name">文件夹 B</div>
+<div class="desc"><code>reg</code> → B 寄存器 · <code>cmdq</code> → B 队列 · <code>caps</code> → B 能力<br>对应 <strong>IOMMU B</strong> 硬件</div>
+</div>
+</div>
+</div>
+<h4 id="software-c4">代码怎么知道操作哪颗？看参数</h4>
+<pre><code><span class="kw">int</span> riscv_iommu_init(<span class="kw">struct</span> <span class="type">riscv_iommu_device</span> *iommu)   <span class="cmt">// iommu 是参数</span>
+{
+    riscv_iommu_queue_alloc(iommu, &amp;iommu-&gt;cmdq, ...);   <span class="cmt">// 操作参数指向的那个</span>
+}</code></pre>
+<p>传 A 进来，<code>iommu-&gt;cmdq</code> 就是 A 的命令队列；传 B 就是 B 的。和 <code>f(x)=x+1</code> 一个道理：函数只有一份，<code>x</code> 传 3 得 4、传 5 得 6——函数不「知道」自己算的是哪个数，是调用者通过参数告诉它的。驱动所有函数都是这样，靠参数拿到具体的实例再操作。</p>
+<h4 id="software-c5">共享什么、独立什么</h4>
+<table>
+<tr><th>独立（每颗 IOMMU 一份）</th><th>共享（全局一份）</th></tr>
+<tr><td>寄存器、命令队列、Fault 队列、设备目录表、能力值 <code>caps</code></td><td><code>riscv_iommu_ops</code> 表、PSCID 分配器、blocking/identity 空 domain</td></tr>
+</table>
+<p>共享的都是「无状态」的东西，多颗 IOMMU 共用不冲突；有状态的（寄存器/队列/目录）全是各管各的。内核 iommu core 只是「登记处 + 路由器」，登记所有 IOMMU、把设备路由到所属的那颗，并不替你操作硬件。</p>
+<h3 id="software-c6">3.1 读写寄存器：relaxed 宏</h3>
+<p>驱动通过 <code>iommu.h:71-89</code> 的一组宏读写寄存器：</p>
+<pre><code>riscv_iommu_readl(iommu, addr)     <span class="cmt">// 读 32 bit 寄存器</span>
+riscv_iommu_readq(iommu, addr)     <span class="cmt">// 读 64 bit 寄存器</span>
+riscv_iommu_writel(iommu, addr, v) <span class="cmt">// 写 32 bit</span>
+riscv_iommu_writeq(iommu, addr, v) <span class="cmt">// 写 64 bit</span></code></pre>
+<p>它们展开成 <code>readl_relaxed</code> / <code>writel_relaxed</code>——<strong>relaxed 表示「不自动加内存屏障」</strong>。这意味着有顺序要求的操作（先写数据、再写门铃）必须由调用方显式加屏障。这个「屏障」是理解队列机制的关键，见下。</p>
+<p>还有两个带超时的轮询宏，用来「等硬件完成某件事」：</p>
+<pre><code>riscv_iommu_readq_timeout(iommu, addr, val, cond, delay, timeout)
+  <span class="cmt">// 反复读 addr 到 val，直到 cond 为真，或超过 timeout 微秒</span></code></pre>
+<h3 id="software-c7">3.2 队列怎么操作：无界 shadow 索引</h3>
+<p>这是驱动里最精巧的设计。队列是环形缓冲区，靠 Head/Tail 两个指针管理。但硬件寄存器里的 Head/Tail 是 32 位、会回绕的。软件直接维护会踩回绕的坑，所以想了个办法：</p>
+<div class="callout purple">
+<div class="title">核心思想：软件用「无界整数」，硬件侧才取模</div>
+<p class="lead" style="margin:0">软件维护三个<strong>永远只增不减</strong>的 <code>atomic_t</code>（<code>prod/head/tail</code>），判断「队列满/空」就直接 <code>tail - head</code> 相减，永远不会因为回绕算错。只有在真正写硬件寄存器、或索引数组时，才用 <code>Q_ITEM(index) = index &amp; mask</code> 取模（mask = 队列长度 - 1，是 2 的幂）。</p>
+</div>
+<p>队列结构（<code>iommu.h:23-36</code>）：</p>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_queue</span> {
+    <span class="type">atomic_t</span> prod;   <span class="cmt">// 无界生产者索引</span>
+    <span class="type">atomic_t</span> head;   <span class="cmt">// 无界 shadow 消费者索引</span>
+    <span class="type">atomic_t</span> tail;   <span class="cmt">// 无界 shadow 生产者索引</span>
+    <span class="type">raw_spinlock_t</span> lock;   <span class="cmt">// 序列化发布</span>
+    <span class="kw">unsigned</span> <span class="kw">int</span> mask;     <span class="cmt">// 队列长度 - 1（取模用）</span>
+    <span class="kw">void</span> *base;            <span class="cmt">// 环形缓冲区内核指针</span>
+    <span class="type">dma_addr_t</span> phys;       <span class="cmt">// 物理地址</span>
+    <span class="type">u16</span> qbr;               <span class="cmt">// base 寄存器偏移</span>
+    <span class="type">u16</span> qcr;               <span class="cmt">// CSR 寄存器偏移</span>
+    <span class="type">u8</span> qid;                <span class="cmt">// 队列 ID</span>
+};</code></pre>
+<h3 id="software-c8">3.3 一条命令的入队过程（黄金例子）</h3>
+<p><code>riscv_iommu_queue_send</code>（<code>iommu.c:422-476</code>）分四步，把「队列 + 屏障」讲透了：</p>
+<pre><code><span class="cmt">// ① 等空间 + 占位</span>
+<span class="kw">for</span> (;;) {
+    spin_lock(&amp;queue-&gt;lock);
+    prod = atomic_read(&amp;queue-&gt;tail);
+    head = atomic_read(&amp;queue-&gt;head);
+    <span class="kw">if</span> ((prod - head) &lt; queue-&gt;mask)   <span class="cmt">// 无界相减判满</span>
+        <span class="kw">break</span>;
+    spin_unlock(&amp;queue-&gt;lock);
+    riscv_iommu_queue_wait_for_space(...);  <span class="cmt">// 满了，等硬件消费</span>
+}
+
+<span class="cmt">// ② 写数据到环形缓冲区</span>
+memcpy(queue-&gt;base + Q_ITEM(queue, prod) * entry_size, entry, entry_size);
+
+<span class="cmt">// ③ 屏障后更新硬件 Tail（门铃）</span>
+dma_wmb();                                          <span class="cmt">// 数据先落地</span>
+riscv_iommu_writel(iommu, Q_TAIL(queue), Q_ITEM(queue, prod + <span class="num">1</span>)); <span class="cmt">// 再敲门铃</span>
+
+<span class="cmt">// ④ 门铃写完成，再更新 shadow tail</span>
+#ifdef CONFIG_MMIOWB
+mmiowb();                                          <span class="cmt">// 等 MMIO 写完成</span>
+#endif
+atomic_set(&amp;queue-&gt;tail, prod + <span class="num">1</span>);
+atomic_set(&amp;queue-&gt;prod, prod + <span class="num">1</span>);</code></pre>
+<div class="callout amber">
+<div class="title">两个屏障，顺序不能反</div>
+<p class="lead" style="margin:0"><code>dma_wmb()</code>：保证「命令数据」先于「Tail 门铃写」被硬件看到——否则硬件一看到 Tail 前移，就去读还没写好的命令。<code>mmiowb()</code>：保证「门铃写」先于「shadow tail 更新」——否则别的 CPU 看到 shadow tail 已经 +1、以为命令发出去了，实际 MMIO 写还在路上。屏障是「保证顺序」的工具，不是「加速」的工具。</p>
+</div>
+<p>消费端（Fault 队列，<code>iommu.c:312-339</code>）：先看 shadow <code>tail - head</code> 有没有数据；没有就去读硬件 Tail 寄存器，把硬件新增的量加到 shadow tail 上；处理完 <code>release</code> 更新 head 并写硬件 Head 寄存器，告诉硬件「这些我读走了」。</p>
+<h3 id="software-c9">3.4 发命令 + 等完成</h3>
+<pre><code>riscv_iommu_cmd_send(iommu, &amp;cmd)   <span class="cmt">// 入队一条命令，不等待</span>
+riscv_iommu_cmd_sync(iommu, timeout) <span class="cmt">// 发 IOFENCE.C 并等它执行完</span></code></pre>
+<p><code>cmd_sync</code> 的机制：IOFENCE.C 命令带 <code>PR|PW</code> 位，硬件执行到它时保证「前面所有命令都已完成」。软件发完 fence 后轮询 Head 寄存器，等硬件消费过这条 fence，就说明前面的失效都生效了。<strong>fence 是「同步点」</strong>。</p>
+<h3 id="software-c10">3.5 domain：软件侧的组织单位</h3>
+<p>软件把「一组页表 + 一个 PSCID」打包成一个 <strong>domain</strong>（<code>iommu.c:836-845</code>），多个设备可以共享一个 domain（共享同一套翻译）。</p>
+<pre><code><span class="kw">struct</span> <span class="type">riscv_iommu_domain</span> {
+    <span class="kw">union</span> {
+        <span class="kw">struct</span> <span class="type">iommu_domain</span> domain;       <span class="cmt">// 内核框架视角</span>
+        <span class="kw">struct</span> <span class="type">pt_iommu_riscv_64</span> riscvpt; <span class="cmt">// 页表库视角</span>
+    };
+    <span class="kw">struct</span> <span class="type">list_head</span> bonds;   <span class="cmt">// 挂了哪些设备的链表</span>
+    <span class="type">spinlock_t</span> lock;
+    <span class="kw">int</span> pscid;                <span class="cmt">// 本 domain 的进程号</span>
+};</code></pre>
+<p>domain 和设备的关联用 <code>bond</code> 结构记录（<code>iommu.c:871-875</code>）。失效翻译时，遍历 bond 链表，对每个挂了这个 domain 的 IOMMU 各发一次失效命令。</p>
+</section><section class="card" id="dataflow">
+<h2><span class="no">4</span>第四站：数据流 <span class="tag green">看懂全貌</span></h2>
+<p class="ref">把前三站的零件拼起来，跟着一个 DMA 请求走一遍</p>
+<p class="lead">现在零件都认识了，把它们装成一条流水线。一个设备发起 DMA，从请求进来到翻译完成：</p>
+<div class="vflow">
+<div class="layer m1">
+<div class="name">设备发 DMA</div>
+<div class="desc">device id + IOVA + 读写属性</div>
+</div>
+<div class="link"></div>
+<div class="layer m2">
+<div class="name">① 用 device id 查 DDT</div>
+<div class="desc">→ 找到设备上下文 DC</div>
+</div>
+<div class="link"></div>
+<div class="layer m3">
+<div class="name">② 从 DC 取出页表指针和进程号</div>
+<div class="desc"><code>fsc</code>（页表指针）· <code>ta.PSCID</code>（进程号）</div>
+</div>
+<div class="link"></div>
+<div class="layer m4">
+<div class="name">③ 用 IOVA 逐级查页表</div>
+<div class="desc">每级 9 bit</div>
+</div>
+<div class="link"><span class="lbl">查不到 → 写 Fault 队列 → 中断上报</span></div>
+<div class="layer m5">
+<div class="name">④ 得到物理地址 PA，上总线读写真实内存</div>
+</div>
+</div>
+<h3 id="dataflow-c1">4.1 device id 从哪来</h3>
+<p>PCIe 设备的 device id 就是 <strong>BDF</strong>（Bus:Device.Function）编码成一个数：<code>device id = (Bus&lt;&lt;8) | (Device&lt;&lt;3) | Function</code>。这是 IOMMU 在总线上<strong>天然能看到的</strong>，软件不用额外告知。</p>
+<h3 id="dataflow-c2">4.2 查 DDT：多级目录遍历</h3>
+<p>device id 被切成几段（DDI），每段作为一级索引逐级下钻。切分规则（<code>iommu.c:606-625</code>）分 base 和 extended 两种格式，取决于硬件是否支持 <code>MSI_FLAT</code> 能力。源码 <code>riscv_iommu_get_dc</code>（<code>iommu.c:591</code>）负责：校验范围 → 逐级下钻（没建的表当场分配）→ 定位叶子 DC。</p>
+<h3 id="dataflow-c3">4.3 页表翻译 IOVA → PA</h3>
+<p>从 DC 的 <code>fsc</code> 拿到页表根，用 IOVA 逐级翻译。SV39 为例：</p>
+<div class="diagram">
+<div class="bitfield">
+<span style="flex:9">VPN[2]<br><em>9 bit</em></span>
+<span style="flex:9">VPN[1]<br><em>9 bit</em></span>
+<span style="flex:9">VPN[0]<br><em>9 bit</em></span>
+<span style="flex:12">offset<br><em>12 bit</em></span>
+</div>
+<div class="flow-h">
+<div class="layer m1"><div class="name">根页表</div></div>
+<div class="arrow">VPN[2] →</div>
+<div class="layer m2"><div class="name">二级</div></div>
+<div class="arrow">VPN[1] →</div>
+<div class="layer m3"><div class="name">三级</div></div>
+<div class="arrow">VPN[0] →</div>
+<div class="layer m4"><div class="name">物理页<br>（叶子 PTE）</div></div>
+</div>
+<div class="arrow">物理页号 + 12 bit offset = PA</div>
+</div>
+<p>非虚拟化场景只有一级翻译（IOVA→PA）。虚拟化场景两级翻译（IOVA→GPA→HPA），用 DC 里的 <code>iohgatp</code> 做第二级。本文聚焦前者。</p>
+<h3 id="dataflow-c4">4.4 翻译结果</h3>
+<p>成功 → 物理地址上总线。失败 → 硬件往 Fault 队列写一条记录并中断，cause 里常见 <code>256</code>（DMA 被禁）和 <code>258</code>（DDT 表项无效，即 DC.V=0）。</p>
+<div class="callout green">
+<div class="title">记住这条链，整份驱动都围绕它</div>
+<p class="lead" style="margin:0"><strong>device id → DC → 页表指针 + PSCID → IOVA 逐级翻译 → 物理地址</strong>。DDT 是「找 DC 的目录」，页表是「翻译的字典」，PSCID 是「缓存标签」，命令队列用来「维护缓存」，Fault 队列用来「报错」。一条链穿起来，驱动就没有秘密了。</p>
+</div>
+</section><section class="card" id="lifecycle">
+<h2><span class="no">5</span>第五站：生命周期 <span class="tag green">串起来</span></h2>
+<p class="ref">驱动从开机到关机的完整历程，把前面所有零件串成时间线</p>
+<div class="vflow">
+<div class="layer m1">
+<div class="name">启动</div>
+<div class="desc">probe（接入层发现硬件）→ init（核心初始化）</div>
+</div>
+<div class="link"></div>
+<div class="layer m2">
+<div class="name">设备接入</div>
+<div class="desc">probe_device（预占位）→ attach（装页表）</div>
+</div>
+<div class="link"></div>
+<div class="layer m3">
+<div class="name">运行时</div>
+<div class="desc">unmap → iotlb_sync（失效）· fault（上报）</div>
+</div>
+<div class="link"></div>
+<div class="layer m4">
+<div class="name">收尾</div>
+<div class="desc">remove / shutdown</div>
+</div>
+</div>
+<h3 id="lifecycle-c1">5.1 启动：probe → init</h3>
+<p>接入层发现硬件后调用核心 <code>riscv_iommu_init</code>（<code>iommu.c:1580-1649</code>），顺序有严格依赖：</p>
+<pre><code>① QUEUE_INIT 配置命令队列、Fault 队列的寄存器偏移和默认长度
+② init_check()  三项检查：DDTP 状态/kdump、字节序、中断向量
+③ iodir_alloc() 分配 DDT 根页
+④ queue_alloc(cmdq)  分配命令队列环形缓冲区
+⑤ queue_alloc(fltq)  分配 Fault 队列
+⑥ queue_enable(cmdq) 使能命令队列 + 注册中断
+⑦ queue_enable(fltq)
+⑧ iodir_set_mode(3LVL)  切 DDT 到多级模式
+⑨ iommu_device_register(ops)  注册 ops，此后才接管设备</code></pre>
+<div class="callout red">
+<div class="title">顺序里藏着一个强依赖</div>
+<p class="lead" style="margin:0">必须先使能命令队列（⑥⑦）再切 DDT 模式（⑧）。因为 <code>iodir_set_mode</code> 收尾要发 <code>IODIR.INVAL_DDT</code> + <code>IOTINVAL.VMA</code> + <code>IOFENCE.C</code> 三条命令去刷新硬件缓存，这些命令得靠已经使能的命令队列才能发出去。最后（⑨）才注册 ops——注册后 IOMMU 核心才会调 <code>probe_device</code> 接管设备，之前所有内部结构必须就绪。</p>
+</div>
+<p>启动里还有两个值得注意的细节：</p>
+<ul>
+<li><strong>WARL 探测队列长度</strong>（<code>queue_alloc</code>，<code>iommu.c:132</code>）：软件写一个最大的 LOG2SZ 值，读回硬件实际支持的值，就能探测出队列能多长。这叫 <strong>WARL（Write Any, Read Legal）</strong>——硬件对任意写都返回一个合法值。</li>
+<li><strong>WARL 探测 DDT 层级</strong>（<code>iodir_set_mode</code>，<code>iommu.c:747</code>）：从 3LVL 开始试，硬件不接受就降一级重试，直到成功或到 BARE/OFF。</li>
+</ul>
+<h3 id="lifecycle-c2">5.2 设备接入：probe_device → attach</h3>
+<p>设备被接管时，core 调 <code>probe_device</code>（<code>iommu.c:1452</code>）。关键设计是<strong>「预占位但不启用」</strong>：给每个 device id 分配好 DC，但 <code>tc = 0</code>（V=0 无效）。此时设备发 DMA 会吃 fault（258）。</p>
+<p>真正装页表在 <code>attach_paging_domain</code>（<code>iommu.c:1305</code>）：组装 <code>fsc</code>（页表根指针）和 <code>ta</code>（PSCID + V 位），建立 bond，然后调 <code>iodir_update</code> 更新 DC。</p>
+<h4 id="lifecycle-c3">iodir_update 的两遍式更新（关键！）</h4>
+<p><code>riscv_iommu_iodir_update</code>（<code>iommu.c:1189-1249</code>）分两遍，核心是<strong>V 位最后写</strong>：</p>
+<pre><code><span class="cmt">// 第一遍：对每个已有效的 DC，先清 V，再失效缓存</span>
+<span class="kw">for</span> each id:
+    <span class="kw">if</span> (dc-&gt;tc &amp; TC_V) {
+        WRITE_ONCE(dc-&gt;tc, tc &amp; ~TC_V);   <span class="cmt">// ① 先摘 V（防设备用旧翻译）</span>
+        发 IODIR.INVAL_DDT + IOTINVAL;     <span class="cmt">// ② 失效缓存</span>
+    }
+
+<span class="cmt">// 第二遍：写新配置，V 位最后点亮</span>
+<span class="kw">for</span> each id:
+    WRITE_ONCE(dc-&gt;fsc, fsc);             <span class="cmt">// ③ 先写页表指针</span>
+    WRITE_ONCE(dc-&gt;ta, ta &amp; PSCID);       <span class="cmt">// ④ 再写进程号</span>
+    dma_wmb();                            <span class="cmt">// ⑤ 屏障</span>
+    WRITE_ONCE(dc-&gt;tc, tc | V);           <span class="cmt">// ⑥ 最后写 V=1</span>
+    发 IODIR.INVAL_DDT + IOTINVAL;         <span class="cmt">// ⑦ 再失效缓存</span></code></pre>
+<div class="callout green">
+<div class="title">为什么 V 位要最后写？</div>
+<p class="lead" style="margin:0"><code>V</code> 是「这个 DC 能不能用」的总开关。如果先写 V=1，硬件可能读到「新 V + 旧页表指针」的半新半旧状态，用错页表翻译。所以顺序必须是：先写数据字段 → 屏障 → 最后点亮 V。清的时候反过来：先摘 V → 失效缓存 → 再改数据。这是「先断电，再改线」的安全时序。</p>
+</div>
+<h3 id="lifecycle-c4">5.3 页表变更：unmap → IOTLB 失效</h3>
+<p>unmap 一块 IOVA 时，光删页表不够——硬件内部的 <strong>IOTLB</strong>（翻译缓存）还留着旧条目，必须显式失效（<code>iotlb_sync</code> → <code>iotlb_inval</code>，<code>iommu.c:1051-1113</code>）。</p>
+<p>失效粒度决策 <code>riscv_iommu_tlbi_calc</code>（<code>iommu.c:960-1003</code>）是性能关键：</p>
+<ul>
+<li>算出「能覆盖待失效区间的最小 NAPOT 范围」，一条命令搞定大块失效。</li>
+<li>改的是非叶子页表、且硬件支持 <code>NL</code> 能力，才加 NL 位；否则只能全局失效（AV=0 全刷）。</li>
+<li>地址太多（&gt;512）就放弃逐条，改全局失效。</li>
+</ul>
+<p>遍历 bond 链表，对<strong>每个不同的 IOMMU</strong>各发一次失效（一个 domain 可能挂多个 IOMMU）。链表按 IOMMU 分组，遍历时 <code>if (iommu == prev) continue</code> 去重。</p>
+<h3 id="lifecycle-c5">5.4 故障处理</h3>
+<p>硬件写 Fault 队列 → 中断 → 中断线程 <code>riscv_iommu_fltq_process</code>（<code>iommu.c:556</code>）消费：读一批 → 逐个 <code>riscv_iommu_fault</code> 处理 → 释放空间。目前的 <code>riscv_iommu_fault</code>（<code>iommu.c:542</code>）只<strong>打印日志</strong>，还没实现真正的故障恢复（源码标注 placeholder）。中断用 <strong>threaded irq</strong>：硬中断只查状态，耗时处理放内核线程，不阻塞其他中断。</p>
+<h3 id="lifecycle-c6">5.5 收尾：remove / shutdown</h3>
+<table>
+<tr><th>函数</th><th>触发</th><th>做什么</th><th>释放资源吗</th></tr>
+<tr><td><code>riscv_iommu_remove</code></td><td>设备移除/驱动卸载</td><td>注销 → 切 OFF → 关队列</td><td>完整释放</td></tr>
+<tr><td><code>riscv_iommu_disable</code></td><td>关机/reboot/kexec</td><td>切 BARE → 清队列 CSR</td><td>不释放，仅停翻译</td></tr>
+</table>
+<p><code>remove</code> 顺序和 init 严格相反；<code>disable</code> 是「best effort」切 BARE 透传——马上断电了不回收内存，但必须停掉翻译，防关机时设备还在发 DMA 打到半关闭的页表。</p>
+</section><section class="card" id="bus">
+<h2><span class="no">6</span>第六站：两个接入层 <span class="tag amber">收尾</span></h2>
+<p class="ref">同一颗 IOMMU 硬件，可挂 PCIe 总线，也可作平台设备</p>
+<p class="lead">核心 <code>iommu.c</code> 与总线无关，真正接到系统上靠两个薄薄的接入层。它们各自「发现硬件 + 配置中断」，然后都调用同一个 <code>riscv_iommu_init</code>。</p>
+<h3 id="bus-c1">6.1 PCIe 接入（iommu-pci.c）</h3>
+<pre><code>pcim_enable_device(pdev)                  <span class="cmt">// 托管式使能设备</span>
+校验 BAR0 是 MEM 型且 ≥ <span class="num">0x1000</span>             <span class="cmt">// 寄存器区至少 4KB</span>
+pcim_iomap_regions(pdev, BIT(<span class="num">0</span>), ...)      <span class="cmt">// ioremap BAR0</span>
+读 caps / fctl
+校验 IGS 支持 MSI（MSI 或 BOTH）           <span class="cmt">// PCI 只用 MSI</span>
+pci_alloc_irq_vectors(<span class="num">1</span>..<span class="num">4</span>, MSIX|MSI)      <span class="cmt">// 分配 MSI/MSI-X</span>
+逐向量 msi_get_virq 填 irqs[]
+清 fctl.WSI（若置位）
+<span class="kw">return</span> riscv_iommu_init(iommu)             <span class="cmt">// 交给核心</span></code></pre>
+<p>要点：PCIe 设备的 MSI 是标准 capability，内核 PCI 层自动处理，驱动只管分配向量、取 virq。</p>
+<h3 id="bus-c2">6.2 平台接入（iommu-platform.c）</h3>
+<p>差别全在中断，按 IGS 分三路（<code>iommu-platform.c:73-140</code>）：</p>
+<ul>
+<li><strong>MSI 路</strong>：平台设备没有 PCI 的 MSI capability，要用规范定义的<strong>内部 MSI 配置表</strong>（<code>0x0300</code>）。驱动自己实现 <code>riscv_iommu_write_msi_msg</code>（<code>iommu-platform.c:24-44</code>），把「地址+数据」写进表，硬件发中断时按表发消息。</li>
+<li><strong>WSI 路</strong>：传统线中断，4 类事件各占一根线，<code>platform_get_irq</code> 解析，置位 <code>fctl.WSI</code>。</li>
+<li><strong>降级</strong>：MSI 配失败但 IGS=BOTH 时，<code>fallthrough</code> 降级到 WSI。</li>
+</ul>
+<h3 id="bus-c3">6.3 对比</h3>
+<table>
+<tr><th>维度</th><th>PCIe</th><th>平台</th></tr>
+<tr><td>寄存器映射</td><td>读 BAR0</td><td>读第 0 个 MEM 资源</td></tr>
+<tr><td>中断模式</td><td>只用 MSI/MSI-X</td><td>MSI + WSI 双模式</td></tr>
+<tr><td>MSI 消息写入</td><td>内核代劳</td><td>软件写内部 MSI 配置表</td></tr>
+<tr><td>匹配方式</td><td>vendor/device ID</td><td>compatible（OF）+ _HID（ACPI）</td></tr>
+</table>
+<div class="callout green">
+<div class="title">两个接入层一句话</div>
+<p class="lead" style="margin:0">PCIe 的 MSI 是标准 capability，内核自动处理；平台设备的 MSI 没有标准结构，RISC-V IOMMU 规范定义了内部 MSI 配置表，驱动要自己写 <code>write_msi_msg</code> 回调。这是最本质的区别。</p>
+</div>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>
