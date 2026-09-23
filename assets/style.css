@@ -7,21 +7,7 @@
   --card-bg: #fafafa;
   --panel: rgba(255, 255, 255, 0.66);
   --hover: rgba(0, 0, 0, 0.05);
-  --bg-overlay: linear-gradient(160deg, rgba(253, 248, 236, 0.35) 0%, rgba(247, 242, 228, 0.3) 50%, rgba(238, 242, 251, 0.35) 100%);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #111827;
-    --fg: #e5e7eb;
-    --muted: #9ca3af;
-    --accent: #60a5fa;
-    --border: #374151;
-    --card-bg: #1f2937;
-    --panel: rgba(31, 41, 55, 0.66);
-    --hover: rgba(255, 255, 255, 0.06);
-    --bg-overlay: linear-gradient(160deg, rgba(27, 37, 55, 0.85) 0%, rgba(17, 24, 39, 0.85) 50%, rgba(12, 20, 32, 0.85) 100%);
-  }
+  --bg-overlay: linear-gradient(160deg, rgba(253, 248, 236, 0.2) 0%, rgba(247, 242, 228, 0.2) 50%, rgba(238, 242, 251, 0.25) 100%);
 }
 
 * { box-sizing: border-box; }
