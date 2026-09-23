@@ -40,6 +40,16 @@
     navEl.innerHTML = html;
   }
 
+  function noteItemHtml(n) {
+    return (
+      '<div class="note-item">' +
+      '<div class="note-main"><a class="note-title" href="' + escapeHtml(n.url) + '">' + escapeHtml(n.title) + "</a>" +
+      (n.desc ? '<p class="note-desc">' + escapeHtml(n.desc) + "</p>" : "") +
+      "</div>" +
+      '<span class="date">' + escapeHtml(n.date) + "</span></div>"
+    );
+  }
+
   function render() {
     const kw = searchEl ? searchEl.value.trim().toLowerCase() : "";
 
@@ -73,19 +83,20 @@
       groups.get(key).push(n);
     });
 
-    const showGroup = state.category === "全部";
+    const collapsible = state.category === "全部";
+    const forceOpen = !!kw;
     let html = "";
     groups.forEach(function (items, category) {
-      if (showGroup) html += '<section class="category"><h2>' + escapeHtml(category) + "</h2>";
-      items.forEach(function (n) {
+      if (collapsible) {
+        html += '<details class="cat-group"' + (forceOpen ? " open" : "") + ">";
         html +=
-          '<div class="note-item">' +
-          '<div class="note-main"><a class="note-title" href="' + escapeHtml(n.url) + '">' + escapeHtml(n.title) + "</a>" +
-          (n.desc ? '<p class="note-desc">' + escapeHtml(n.desc) + "</p>" : "") +
-          "</div>" +
-          '<span class="date">' + escapeHtml(n.date) + "</span></div>";
-      });
-      if (showGroup) html += "</section>";
+          '<summary><span class="cat-name">' + escapeHtml(category) +
+          '</span><span class="cat-count">' + items.length + "</span></summary>";
+        items.forEach(function (n) { html += noteItemHtml(n); });
+        html += "</details>";
+      } else {
+        items.forEach(function (n) { html += noteItemHtml(n); });
+      }
     });
     listEl.innerHTML = html;
   }
