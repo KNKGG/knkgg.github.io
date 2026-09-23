@@ -14,7 +14,7 @@
 
 body {
   margin: 0;
-  background-image: var(--bg-overlay), url("bg.svg");
+  background-image: var(--bg-overlay), url("bg.svg?v=20260924");
   background-size: cover, cover;
   background-position: center, center;
   background-repeat: no-repeat, no-repeat;
