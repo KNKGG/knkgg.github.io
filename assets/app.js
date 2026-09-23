@@ -23,14 +23,14 @@
     return Array.from(map.entries());
   }
 
-  let state = { category: "全部" };
+  let state = { category: "总览" };
 
   function renderNav() {
     const kw = searchEl && searchEl.value.trim();
-    const active = kw ? "全部" : state.category;
+    const active = kw ? "总览" : state.category;
     let html =
-      '<button class="cat-item' + (active === "全部" ? " active" : "") +
-      '" data-cat="全部"><span>全部</span><span class="count">' + NOTES.length + "</span></button>";
+      '<button class="cat-item' + (active === "总览" ? " active" : "") +
+      '" data-cat="总览"><span>总览</span><span class="count">' + NOTES.length + "</span></button>";
     getCategories().forEach(function (c) {
       html +=
         '<button class="cat-item' + (active === c[0] ? " active" : "") +
@@ -59,7 +59,7 @@
       return hay.indexOf(kw) !== -1;
     });
 
-    if (state.category !== "全部" && !kw) {
+    if (state.category !== "总览" && !kw) {
       filtered = filtered.filter(function (n) {
         return (n.category || "其他") === state.category;
       });
@@ -68,7 +68,7 @@
     if (kw) {
       titleEl.textContent = "搜索：" + searchEl.value.trim();
     } else {
-      titleEl.textContent = state.category === "全部" ? "全部笔记" : state.category;
+      titleEl.textContent = state.category === "总览" ? "总览" : state.category;
     }
 
     if (filtered.length === 0) {
@@ -83,7 +83,7 @@
       groups.get(key).push(n);
     });
 
-    const collapsible = state.category === "全部";
+    const collapsible = state.category === "总览";
     const forceOpen = !!kw;
     let html = "";
     groups.forEach(function (items, category) {
@@ -114,7 +114,7 @@
 
   if (searchEl) {
     searchEl.addEventListener("input", function () {
-      state.category = "全部";
+      state.category = "总览";
       renderNav();
       render();
     });
