@@ -7,14 +7,14 @@
   --card-bg: #fafafa;
   --panel: rgba(255, 255, 255, 0.66);
   --hover: rgba(0, 0, 0, 0.05);
-  --bg-overlay: linear-gradient(160deg, rgba(253, 248, 236, 0.4) 0%, rgba(247, 242, 228, 0.4) 50%, rgba(238, 242, 251, 0.45) 100%);
+  --bg-overlay: linear-gradient(160deg, rgba(253, 248, 236, 0.15) 0%, rgba(247, 242, 228, 0.15) 50%, rgba(238, 242, 251, 0.18) 100%);
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background-image: var(--bg-overlay), url("bg.jpg");
+  background-image: var(--bg-overlay), url("bg.svg");
   background-size: cover, cover;
   background-position: center, center;
   background-repeat: no-repeat, no-repeat;
