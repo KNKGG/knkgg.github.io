@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>波形 Debug 工具 · wave-mcp 与 fsdb-mcp 使用指南</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+/* ---------- 侧边栏 ---------- */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+#toc .lvl3 { font-size: 0.78rem; padding-left: 2.4rem; color: var(--ink-mute); }
+
+/* ---------- 内容区 ---------- */
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+/* ---------- hero ---------- */
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub, header.hero .subtitle { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+/* ---------- 卡片 ---------- */
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3, h4 {
+  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
+  scroll-margin-top: 1.5rem;
+}
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+em, i { font-style: italic; }
+
+/* ---------- tag pill ---------- */
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+/* ---------- 代码 ---------- */
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+pre code .kw   { color: #1E3A8A; font-weight: 600; }
+pre code .str  { color: #C04E1A; }
+pre code .num  { color: #9a6a00; }
+pre code .type { color: #5b3fbf; }
+pre code .cmt  { color: #3f6b4f; }
+pre.diagram {
+  background: var(--paper-soft); color: var(--ink);
+  border: 1px solid var(--rule); font-size: 0.82rem; line-height: 1.55;
+}
+
+/* ---------- 流程 / 分层 ---------- */
+.diagram { margin: 1.2rem 0; }
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.7rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.92rem; color: var(--ink); font-weight: 600; line-height: 1.5; }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.25rem; line-height: 1.55; }
+.layer .desc code, .layer .name code { color: var(--accent); }
+.layer.blue   { border-color: var(--accent);   background: color-mix(in oklab, var(--accent), transparent 95%); }
+.layer.orange { border-color: var(--accent-2); background: color-mix(in oklab, var(--accent-2), transparent 95%); }
+.layer.amber  { border-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 95%); }
+.layer.green  { border-color: var(--green);    background: color-mix(in oklab, var(--green), transparent 94%); }
+.layer.red    { border-color: var(--red);      background: color-mix(in oklab, var(--red), transparent 96%); }
+.layer.m1 { border-color: #E6B3C2; background: #FAEDF2; }
+.layer.m2 { border-color: #E7C0AC; background: #FAF0E8; }
+.layer.m3 { border-color: #B5CFBC; background: #EFF6F1; }
+.layer.m4 { border-color: #B0C6DE; background: #EEF4F9; }
+.layer.m5 { border-color: #C4B8D6; background: #F2EFF7; }
+
+.arrow { text-align: center; color: var(--ink-mute); font-size: 0.82rem; padding: 0.4rem 0; }
+.arrow b, .arrow strong { color: var(--ink); }
+.split { display: flex; gap: 0.9rem; }
+.split > div { flex: 1; }
+
+.flow-h { display: flex; align-items: stretch; gap: 0.5rem; flex-wrap: wrap; }
+.flow-h .layer { flex: 1; min-width: 120px; display: flex; flex-direction: column; justify-content: center; }
+.flow-h .arrow { align-self: center; flex: none; padding: 0 0.1rem; }
+
+.vflow { display: flex; flex-direction: column; align-items: center; }
+.vflow > .layer, .vflow > .split { width: 100%; max-width: 480px; }
+.vflow .link {
+  position: relative; width: 2px; height: 46px; flex: none;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+}
+.vflow .link::after {
+  content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent; border-right: 6px solid transparent;
+  border-top: 9px solid var(--accent-2);
+}
+.vflow .link .lbl {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  white-space: nowrap; font-size: 0.76rem; color: var(--ink-soft);
+  background: var(--paper-soft); border: 1px solid var(--rule);
+  padding: 1px 9px; border-radius: 11px;
+}
+@media (max-width: 640px) { .split, .flow-h { flex-direction: column; } }
+.hl-amber  { color: #a86f10; font-weight: 600; }
+.hl-red    { color: #bc3946; font-weight: 600; }
+.hl-green  { color: #1f7a52; font-weight: 600; }
+.hl-accent { color: #1E3A8A; font-weight: 600; }
+
+/* ---------- 表格 ---------- */
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+/* ---------- callout ---------- */
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout.red    { border-left-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.callout.purple { border-left-color: var(--purple); background: color-mix(in oklab, var(--purple), transparent 94%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+/* ---------- analogy ---------- */
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+/* ---------- blockquote ---------- */
+blockquote {
+  margin: 1.2rem 0; padding: 0.8rem 1.3rem;
+  border-left: 3px solid var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2), transparent 95%);
+  border-radius: 0 10px 10px 0; font-style: italic; color: var(--ink-soft);
+}
+blockquote p:last-child { margin-bottom: 0; }
+blockquote .src {
+  display: block; margin-top: 0.6rem;
+  color: var(--ink-mute); font-size: 0.8rem; font-style: normal;
+}
+
+.foot {
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+  color: var(--ink-mute); font-size: 0.8rem;
+}
+
+/* ---------- 列表 ---------- */
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-top: 3rem; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul>
+<li><a class="lvl1" href="#mcp">1. 先搞懂底座：MCP 是什么</a><ul>
+<li><a class="lvl2" href="#mcp-c1">1.1 一句话本质</a><ul></ul></li>
+<li><a class="lvl2" href="#mcp-c2">1.2 解决什么问题：M×N → M+N</a><ul></ul></li>
+<li><a class="lvl2" href="#mcp-c3">1.3 用 UVC 类比</a><ul></ul></li>
+<li><a class="lvl2" href="#mcp-c4">1.4 三个核心角色</a><ul></ul></li>
+<li><a class="lvl2" href="#mcp-c5">1.5 最小例子：AI 怎么调用工具</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#overview">2. 总览：两个工具一句话</a><ul>
+<li><a class="lvl2" href="#overview-c1">2.1 定位</a><ul></ul></li>
+<li><a class="lvl2" href="#overview-c2">2.2 快速选型表</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#wave">3. wave-mcp：开源免 License</a><ul>
+<li><a class="lvl2" href="#wave-c1">3.1 它是什么</a><ul></ul></li>
+<li><a class="lvl2" href="#wave-c2">3.2 系统要求</a><ul></ul></li>
+<li><a class="lvl2" href="#wave-c3">3.3 安装与快速开始</a><ul></ul></li>
+<li><a class="lvl2" href="#wave-c4">3.4 CLI 模式</a><ul></ul></li>
+<li><a class="lvl2" href="#wave-c5">3.5 接入 Code Agent</a><ul></ul></li>
+<li><a class="lvl2" href="#wave-c6">3.6 37 个工具 / 12 大类</a><ul></ul></li>
+<li><a class="lvl2" href="#wave-c7">3.7 关键环境变量</a><ul></ul></li>
+<li><a class="lvl2" href="#wave-c8">3.8 部署模式</a><ul></ul></li>
+<li><a class="lvl2" href="#wave-c9">3.9 CentOS 7 / 老机器</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#fsdb">4. fsdb-mcp：借 Verdi NPI 读 FSDB</a><ul>
+<li><a class="lvl2" href="#fsdb-c1">4.1 它是什么</a><ul></ul></li>
+<li><a class="lvl2" href="#fsdb-c2">4.2 前置依赖</a><ul></ul></li>
+<li><a class="lvl2" href="#fsdb-c3">4.3 安装</a><ul></ul></li>
+<li><a class="lvl2" href="#fsdb-c4">4.4 启动</a><ul></ul></li>
+<li><a class="lvl2" href="#fsdb-c5">4.5 10 个工具</a><ul></ul></li>
+<li><a class="lvl2" href="#fsdb-c6">4.6 典型工作流</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#compare">5. 对比与选型</a><ul>
+<li><a class="lvl2" href="#compare-c1">5.1 全面对比表</a><ul></ul></li>
+<li><a class="lvl2" href="#compare-c2">5.2 什么时候选哪个</a><ul></ul></li>
+<li><a class="lvl2" href="#compare-c3">5.3 结论</a><ul></ul></li>
+</ul></li>
+</ul></nav></aside><main class="content"><header class="hero">
+<h1>波形 Debug 工具 · wave-mcp 与 fsdb-mcp 使用指南</h1>
+<div class="sub">两个让 AI Agent 直接读波形、查信号、追根因的 MCP Server：一个走开源 FST 路线，一个借 Verdi NPI 读 FSDB</div>
+<div class="meta">
+  来源：<code>github.com/Tencent/wave-mcp</code>（Apache-2.0，37 工具）·
+  <code>github.com/hjxxlogic/fsdb-mcp</code>（10 工具，依赖 Verdi）·
+  信息截至 2026-09
+</div>
+</header><section class="card" id="mcp">
+<h2><span class="no">1</span>先搞懂底座：MCP 是什么 <span class="tag blue">概念</span></h2>
+<p class="ref">前面所有工具都叫「MCP Server」，先把 MCP 这个底座讲清楚，后面就全串起来了</p>
+<h3 id="mcp-c1">1.1 一句话本质</h3>
+<p class="lead"><strong>MCP = Model Context Protocol（模型上下文协议）</strong>，是 Anthropic 于 2024 年底提出、后来开放给全行业的<strong>一个标准</strong>，规定「AI 应用」和「外部工具/数据」之间怎么通信。它不是某个软件，而是一份接口规范。</p>
+<h3 id="mcp-c2">1.2 解决什么问题：M×N → M+N</h3>
+<p>没有 MCP 之前，AI 想调用外部工具（读波形、查数据库、访问 GitHub、操作文件），每对「AI × 工具」都要单独写一段对接代码——M 个 AI 应用 × N 个工具 = <strong>M×N 份胶水代码</strong>。有了 MCP，双方只认这一套标准：工具方实现一次，任何 AI 方都能用。<strong>M×N 变成 M+N</strong>。这跟做验证用 UVM 是同一个动机。</p>
+<h3 id="mcp-c3">1.3 用验证工程师熟悉的东西类比</h3>
+<p class="lead"><strong>MCP Server 之于 AI，就像 UVC 之于验证平台。</strong></p>
+<table>
+<tr><th>验证领域</th><th>AI 领域</th></tr>
+<tr><td>UVM 标准（定义 agent/driver/monitor 接口）</td><td>MCP 标准（定义 tool 的接口）</td></tr>
+<tr><td>第三方 UVC（符合 UVM 标准，即插即用）</td><td>MCP Server（如 wave-mcp，符合 MCP 标准）</td></tr>
+<tr><td>你的 testbench（UVM 环境，消费 UVC）</td><td>AI 客户端（Claude Code 等，消费 MCP Server）</td></tr>
+<tr><td><code>uvm_driver</code> 通过 <code>vif</code> 驱动信号</td><td>AI 通过 <code>tool</code> 调用「读信号值」这个能力</td></tr>
+</table>
+<p>所以 wave-mcp / fsdb-mcp 本质上就是：<strong>有人把「读波形」这件事，按 MCP 标准封装成了 37 个 / 10 个工具函数，Claude Code 拿来就能调</strong>——就像你拿一个写好的 <code>i2c_agent</code> 插进平台直接用，不用自己从零写时序。</p>
+<h3 id="mcp-c4">1.4 三个核心角色</h3>
+<ul>
+<li><strong>Client（客户端）</strong>：AI 应用，负责「决定要调哪个工具」。Claude Code、Cursor、Codex 都是。</li>
+<li><strong>Server（服务端）</strong>：能力提供方，负责「真正执行」。wave-mcp、fsdb-mcp、读 GitHub/数据库的那些都是。</li>
+<li><strong>Tool（工具）</strong>：最小调用单元——有名字、有参数、有返回值，本质就是一个「可被 AI 远程调用的函数」。</li>
+</ul>
+<p>通信走 <strong>JSON-RPC</strong>（JSON 格式的远程过程调用），传输方式就是后文出现的 <strong>stdio</strong>（子进程标准输入输出）或 <strong>HTTP</strong>。</p>
+<h3 id="mcp-c5">1.5 最小例子：AI 怎么调用工具</h3>
+<pre><code>{
+  "mcpServers": {
+    "wave-mcp": {
+      "command": "python",
+      "args": ["-m", "wave_mcp.server", "--session", "sessions/my_module"]
+    }
+  }
+}</code></pre>
+<div class="vflow">
+<div class="layer m1"><div class="name">① 你在配置里告诉 AI：「有这个工具服务，用这条命令拉起它」</div><div class="desc">就是上面那段 <code>mcpServers</code> JSON</div></div>
+<div class="link"></div>
+<div class="layer m2"><div class="name">② AI 启动时按配置拉起 server 子进程</div><div class="desc">stdio 方式，一人一进程</div></div>
+<div class="link"></div>
+<div class="layer m3"><div class="name">③ server 汇报：「我有 37 个工具，比如 signal_values(paths, ...)」</div></div>
+<div class="link"></div>
+<div class="layer m4"><div class="name">④ AI 需要查波形时，发 JSON-RPC 请求调用 signal_values</div><div class="desc">传参 paths="top.u_tx.tx_serial"</div></div>
+<div class="link"></div>
+<div class="layer m5"><div class="name">⑤ server 真正去读 FST，把值算出来返回给 AI</div></div>
+<div class="link"></div>
+<div class="layer green"><div class="name">⑥ AI 拿到结果，接着推理</div><div class="desc">「这个信号在 85000ps 变了，说明……」</div></div>
+</div>
+<div class="callout green">
+<div class="title">关键点</div>
+<p class="lead" style="margin:0"><strong>AI 自己并不知道怎么读 FST 文件</strong>，它只是「喊了函数名 + 传参数」，真正的读文件动作是 server 干的。MCP 把「AI 会推理」和「工具会干活」这两件事解耦了。</p>
+</div>
+</section><section class="card" id="overview">
+<h2><span class="no">2</span>总览：两个工具一句话</h2>
+<p class="ref">先搞清楚各自是什么、解决什么问题，再看细节</p>
+<h3 id="overview-c1">2.1 定位</h3>
+<p class="lead">两者都是 <strong>MCP（Model Context Protocol）Server</strong>：把「读波形、查信号」这件事包装成一组标准化的工具，让 Claude Code 这类 AI Agent 能像调用函数一样去查波形、追 X 态、定位 bug。区别在于<strong>波形数据源</strong>和<strong>要不要商用 License</strong>。</p>
+<ul>
+<li><strong>wave-mcp</strong>（腾讯蓬莱实验室）：读 <strong>FST 波形 + RTL 网表</strong>，纯开源技术栈（pylibfst + pyslang），<strong>Apache-2.0 免 License</strong>。能力最强：层次探索、信号查询、驱动分析、值/X 态追踪、波形对比、浏览器波形查看器，共 37 个工具。</li>
+<li><strong>fsdb-mcp</strong>（社区项目）：读 <strong>FSDB 波形</strong>，底层是 Synopsys Verdi 的 <strong>NPI（Native Programming Interface）</strong> 库，<strong>需要 Verdi + license</strong>。功能聚焦在「打开 FSDB → 浏览层次 → 查信号 → 取波形值」这一条基础链路，共 10 个工具。</li>
+</ul>
+<div class="analogy">
+<div class="lbl">类比：两种读盘方式</div>
+<p style="margin:6px 0 0">wave-mcp 像<strong>自己造了台开源读盘器</strong>，读的是 FST 这种开放格式，还能额外读懂 RTL 源码里的连接关系——不花钱、随便并发。</p>
+<p style="margin:6px 0 0">fsdb-mcp 像<strong>租用 Verdi 的官方读盘器</strong>，读的是 FSDB 这种闭源格式，读得又全又准，但要用 Verdi 的 license 开门。</p>
+</div>
+<h3 id="overview-c2">2.2 快速选型表</h3>
+<table>
+<tr><th>你的情况</th><th>推荐</th><th>理由</th></tr>
+<tr><td>手里是 FST / VCD 波形，或没有 Verdi license</td><td><strong>wave-mcp</strong></td><td>免 License，FST/VCD 开箱即用，能力全</td></tr>
+<tr><td>只有 FSDB，且机器装了 Verdi + license</td><td>两者都行</td><td>wave-mcp 能把 FSDB 转 FST 再读（转换不占 license）；fsdb-mcp 直接读</td></tr>
+<tr><td>要追 X 态根因、做驱动/扇入分析、pass/fail 波形对比</td><td><strong>wave-mcp</strong></td><td>这些是 wave-mcp 的强项，fsdb-mcp 没有</td></tr>
+<tr><td>只要基础读波形（查信号值/变化），环境里已有 Verdi</td><td><strong>fsdb-mcp</strong></td><td>轻量、直接，工具少好上手</td></tr>
+</table>
+</section><section class="card" id="wave">
+<h2><span class="no">3</span>wave-mcp：开源免 License 的波形调试 <span class="tag green">Apache-2.0</span></h2>
+<p class="ref">腾讯蓬莱实验室验证团队出品，37 个工具 / 12 大类，纯开源技术栈</p>
+<h3 id="wave-c1">3.1 它是什么</h3>
+<p class="lead">一个 RTL 波形调试 MCP Server，读 <strong>FST 波形 + RTL 网表</strong>，给 LLM 提供波形调试工具集。核心卖点：<strong>免 License、数据准确、真实芯片项目背书</strong>。</p>
+<ul>
+<li><strong>FST 直读</strong>，VCD / FSDB 自动转 FST（<code>prepare_session</code> 一步完成，FSDB 转换不占 Verdi license）。</li>
+<li><strong>不跑仿真器</strong>：你用自己的流程跑出波形，把结果交给它即可。</li>
+<li><strong>静态分析</strong>：用 pyslang 把 RTL 完整精化成一张网表，仿真前就能查连接、驱动、扇入扇出。</li>
+<li><strong>生产级验证</strong>：真实芯片项目 + OpenTitan 27 个 IP + 香山 38 个 IP，225 万信号级值查询正确率 100%。</li>
+</ul>
+<div class="callout blue">
+<div class="title">两个技术栈各管一半</div>
+<p class="lead" style="margin:0"><code>pylibfst</code> 负责读 FST 波形（随机访问、快）；<code>pyslang</code> 负责把 RTL 源码建成网表（提供连接、驱动、扇入扇出这类<strong>波形里没有</strong>的静态关系）。两者拼起来，才既能查「信号这一拍是什么值」，又能答「这值是被谁驱动的」。</p>
+</div>
+<h3 id="wave-c2">3.2 系统要求</h3>
+<table>
+<tr><th>依赖</th><th>要求</th><th>说明</th></tr>
+<tr><td>Python</td><td><code>3.10 – 3.13</code></td><td>已测 3.10–3.13 全通过；MCP SDK 要求 ≥ 3.10</td></tr>
+<tr><td>glibc</td><td><code>≥ 2.28</code></td><td>pyslang 预编译 wheel 的要求（Ubuntu 18.10+ / Debian 10+ / CentOS 8+）</td></tr>
+<tr><td>mcp</td><td><code>2.x</code>（≥2.0.0,&lt;3）</td><td>pip install 自动装</td></tr>
+<tr><td>pylibfst</td><td><code>≥ 0.2.1</code></td><td>FST 波形读取（fstapi）</td></tr>
+<tr><td>pyslang</td><td><code>≥ 11.0.0</code></td><td>RTL 网表构建（完整 elaboration）</td></tr>
+<tr><td>vcd2fst（可选）</td><td>GTKWave 附带</td><td>仅 VCD→FST 转换需要</td></tr>
+</table>
+<p class="lead"><strong>Linux x86_64 开箱即用</strong>。其他平台只有 <code>pylibfst</code> 需要源码编译（cmake + gcc + zlib），波形查看器暂不支持。</p>
+<h3 id="wave-c3">3.3 安装与快速开始</h3>
+<pre><code><span class="cmt"># 安装</span>
+pip install wave-mcp
+
+<span class="cmt"># 一条命令：波形(.fst/.vcd) + filelist → session（自动转 FST + 建网表）</span>
+wave-session --fst sim/dump.fst --top top_tb --filelist rtl.f
+
+<span class="cmt"># 启动 MCP Server（stdio，推荐：一人一进程）</span>
+python -m wave_mcp.server --session sessions/my_module</code></pre>
+<p>仓库还带了三个示例，方便跑通流程（<code>examples/</code> 目录）：</p>
+<ul>
+<li><strong>示例 A</strong> Verilator 快启：counter 设计产出真实 FST，跑通 prepare_session 全流程（需 verilator≥5）。</li>
+<li><strong>示例 B</strong> 静态分析：UART 设计，无波形、无仿真器，展示仿真前分析。</li>
+<li><strong>示例 C</strong> 极小样例：手写 VCD → vcd2fst → FST，零依赖。</li>
+</ul>
+<h3 id="wave-c4">3.4 CLI 模式</h3>
+<p>不挂 Code Agent 也能在终端直接调全部 37 个工具（与 MCP 同名同参数）：</p>
+<pre><code><span class="cmt"># 列出全部 37 个工具</span>
+wave-mcp query --list
+
+<span class="cmt"># 查询信号值变化</span>
+wave-mcp query signal_values --session sessions/my_module \
+    --paths top.u_tx.tx_serial
+
+<span class="cmt"># JSON 传参</span>
+wave-mcp query signal_drivers --session sessions/my_module \
+    --json-args '{"paths": "top.u_tx.tx_serial"}'</code></pre>
+<p>参数按工具签名自动生成，<code>wave-mcp query &lt;工具名&gt; --help</code> 查看。默认输出人读文本，加 <code>--json</code> 输出完整结构化结果。适合 CI 脚本、开发调试、快速验证。</p>
+<h3 id="wave-c5">3.5 接入 Code Agent</h3>
+<p><code>prepare_session</code> 是 MCP 统一入口：Agent 想分析波形时<strong>第一步调它</strong>，传入波形，一次完成「（转换 →）建网表 → 建 session → 打开」。</p>
+<pre><code>prepare_session({
+  "wave_path":     "sim/dump.fst",   <span class="cmt">// .fst 直读 / .vcd 自动转 / .fsdb 自动转</span>
+  "top":           "top_tb",
+  "filelist_path": "rtl.f",          <span class="cmt">// 与仿真同一份 filelist</span>
+  "pack":          "fastlz"          <span class="cmt">// 转换压缩：fastlz/lz4/zlib，可省</span>
+})</code></pre>
+<p>各家 Agent 的 MCP 配置（Claude Code 写入 <code>.mcp.json</code>，或 <code>claude mcp add</code>）：</p>
+<pre><code>{
+  "mcpServers": {
+    "wave-mcp": {
+      "command": "python",
+      "args": ["-m", "wave_mcp.server", "--session", "/abs/path/to/sessions/my_module"]
+    }
+  }
+}</code></pre>
+<p class="lead">还有个独家能力 <strong><code>open_static_session</code></strong>：只凭 RTL 源码建网表打开 session，<strong>不需要波形、不跑仿真</strong>，仿真前就能查接口、驱动、扇入扇出、浏览层次、做 code review。之后仿真出波形，用同一份 RTL 调 <code>prepare_session</code> 升级即可，网表自动复用。</p>
+<h3 id="wave-c6">3.6 37 个工具 / 12 大类</h3>
+<p>工具按功能分成 12 类，下面列出类别和代表工具：</p>
+<table>
+<tr><th>类别</th><th>代表工具</th><th>说明</th></tr>
+<tr><td>波形准备</td><td><code>prepare_session</code> / <code>open_static_session</code> / <code>convert_vcd_to_fst</code> / <code>convert_fsdb_to_fst</code></td><td>波形入口 → session 一条龙</td></tr>
+<tr><td>会话管理</td><td><code>open_session</code> / <code>close_session</code> / <code>session_info</code></td><td><code>session_info</code> 含网表健康度 + 覆盖率</td></tr>
+<tr><td>查询默认值</td><td><code>query_defaults_set/get/clear</code></td><td>按会话设默认信号与时间窗</td></tr>
+<tr><td>层次探索</td><td><code>find_instances</code> / <code>list_modules</code> / <code>scope_info</code></td><td>模块名三层解析</td></tr>
+<tr><td>信号查询</td><td><code>list_signals</code> / <code>signal_info</code></td><td>位宽/方向/类型/声明位置</td></tr>
+<tr><td>值查询</td><td><code>signal_values</code> / <code>signal_activity</code> / <code>find_time_windows</code> / <code>sample_at_clock</code></td><td>FST 强项，随机访问；<code>sample_at_clock</code> 给逐拍表</td></tr>
+<tr><td>时序与事务</td><td><code>fold_transactions</code> / <code>fsm_transitions</code></td><td>事务定义由调用方给</td></tr>
+<tr><td>驱动分析</td><td><code>signal_connectivity</code> / <code>signal_drivers</code> / <code>signal_loads</code> / <code>signal_fanin</code> / <code>signal_downstream</code> / <code>active_drivers</code> / <code>driver_contributors</code></td><td>pyslang 网表（静态精确）+ 分支条件 4 值求值选活跃驱动</td></tr>
+<tr><td>值 / X 态追踪</td><td><code>trace_value</code> / <code>trace_x</code></td><td>网表 × FST 值反向遍历，跨模块下钻</td></tr>
+<tr><td>波形对比</td><td><code>diff_waveforms</code></td><td>N 份波形首分歧定位，按分歧时间排序信号</td></tr>
+<tr><td>波形查看器</td><td><code>open_wave_view</code> / <code>update_wave_view</code> / <code>get_view_state</code> / <code>list_wave_views</code> / <code>close_wave_view</code></td><td>分析完自动弹浏览器波形，嫌疑信号 + 游标钉在出错时刻</td></tr>
+<tr><td>文件</td><td><code>files</code></td><td>filelist + pyslang 网表</td></tr>
+</table>
+<div class="callout amber">
+<div class="title">两个最值钱的工具</div>
+<p class="lead" style="margin:0"><strong><code>trace_x</code></strong>：追 X 态根因——沿驱动链反向遍历、跨模块下钻，每个节点带真实 FST 值，直接告诉你 X 是从哪个信号、哪条语句传进来的。<strong><code>diff_waveforms</code></strong>：对 pass/fail 两份波形定位首个分歧时刻，按分歧时间排序信号，配合 <code>signal_fanin</code> 做因果回溯。这是传统 Verdi 手动 debug 很难自动化做的事。</p>
+</div>
+<h3 id="wave-c7">3.7 关键环境变量</h3>
+<p>多数人<strong>一个都不用配</strong>：装完读 FST/VCD、静态分析、波形查看器全开箱可用。只有两种情况需要配：</p>
+<table>
+<tr><th>变量</th><th>要配吗</th><th>作用</th></tr>
+<tr><td><code>VERDI_HOME</code></td><td>读 <code>.fsdb</code> 时必配</td><td>Verdi <strong>安装根目录</strong>（不是 bin/），在其下找 <code>share/FsdbReader/linux64</code></td></tr>
+<tr><td><code>WAVE_MCP_TOKEN</code></td><td>HTTP 跨机时必配</td><td>HTTP 传输的共享密钥（≥16 字符）</td></tr>
+<tr><td><code>WAVE_MCP_SESSION_ROOT</code></td><td>建议配</td><td>session 落点根目录（HOME 有配额时指向本地大盘）</td></tr>
+<tr><td><code>WAVE_MCP_CACHE_ROOT</code></td><td>建议配</td><td>派生缓存根目录</td></tr>
+</table>
+<div class="callout red">
+<div class="title">要配的话，写进 env，不要用 shell 的 export</div>
+<p class="lead" style="margin:0">Agent 以子进程方式拉起 Server，<strong>继承不到你交互式 shell 里的变量</strong>。要把 <code>VERDI_HOME</code> 这类变量写进 MCP 客户端配置的 <code>env</code> 块里才稳定生效：</p>
+</div>
+<pre><code>{
+  "mcpServers": {
+    "wave-mcp": {
+      "command": "wave-mcp",
+      "env": {
+        "VERDI_HOME": "/tools/synopsys/verdi/T-2022.06-SP1"
+      }
+    }
+  }
+}</code></pre>
+<h3 id="wave-c8">3.8 部署模式</h3>
+<table>
+<tr><th>模式</th><th>适用</th><th>说明</th></tr>
+<tr><td><strong>stdio</strong>（推荐）</td><td>每人本地</td><td>一人一进程，零运维，不需配置</td></tr>
+<tr><td>HTTP（本机）</td><td>本机多客户端</td><td><code>python -m wave_mcp.server --transport http --port 8000</code>，绑回环地址不用配 token</td></tr>
+<tr><td>HTTP（跨机器）</td><td>别机连过来</td><td>绑非回环地址必须设 <code>WAVE_MCP_TOKEN</code>，否则拒绝启动</td></tr>
+<tr><td>离线自包含包</td><td>隔离网</td><td>有网机器 <code>deploy/docker_build_all.sh</code> 打 bundle，拷入后 <code>install.sh</code> 离线装</td></tr>
+</table>
+<h3 id="wave-c9">3.9 CentOS 7 / 老机器怎么办</h3>
+<p>官方 pyslang wheel 要求 glibc ≥ 2.28，CentOS 7（glibc 2.17）<strong>直接 <code>pip install</code> 装不上</strong>，会报 <code>GLIBC_2.27 not found</code>。解决办法：</p>
+<ul>
+<li><strong>用 glibc 2.17 档离线 bundle</strong>：<code>deploy/docker_build_all.sh</code> 自动在容器内自编兼容 wheel，产出 <code>wave-mcp-bundle-glibc2.17.tar.gz</code>，整条链路（独立 Python + wheel + vcd2fst + 静态 surver）在 glibc ≥ 2.17 均可运行，含 CentOS 7。</li>
+<li><strong>在容器里跑</strong>：如 <code>python:3.11-slim</code>，绕开平台差异，最省事。</li>
+<li>bundle 自带独立 Python 3.11，<strong>与系统 Python 无关</strong>，所以目标机 Python 是 3.8 / 3.9 也能用。</li>
+</ul>
+</section><section class="card" id="fsdb">
+<h2><span class="no">4</span>fsdb-mcp：借 Verdi NPI 读 FSDB <span class="tag amber">需 license</span></h2>
+<p class="ref">社区项目 hjxxlogic/fsdb-mcp，10 个工具，底层是 Synopsys NPI</p>
+<h3 id="fsdb-c1">4.1 它是什么</h3>
+<p class="lead">一个读 FSDB（Fast Signal Database）波形的 MCP Server，通过 MCP 协议提供对 FSDB 文件的程序化访问，让 AI 助手能查波形数据、信号、scope、值变化。</p>
+<p>底层走 Synopsys 的 <strong>NPI（Native Programming Interface）</strong>——Verdi 自带的 Python 绑定（<code>pynpi</code>），所以读的是 FSDB 这种闭源格式，读得又全又准，代价是要有 Verdi 环境和 license。</p>
+<h3 id="fsdb-c2">4.2 前置依赖</h3>
+<table>
+<tr><th>依赖</th><th>要求</th></tr>
+<tr><td>Python</td><td><code>3.10+</code>（MCP SDK 要求）</td></tr>
+<tr><td>Synopsys Verdi</td><td>带 NPI 支持</td></tr>
+<tr><td><code>VERDI_HOME</code></td><td>指向 Verdi 安装目录</td></tr>
+<tr><td>pynpi</td><td>随 Verdi 附带</td></tr>
+<tr><td>Verdi license</td><td>有效 license</td></tr>
+</table>
+<h3 id="fsdb-c3">4.3 安装</h3>
+<pre><code><span class="cmt"># 1. 设环境</span>
+export VERDI_HOME=/path/to/verdi
+export LD_LIBRARY_PATH=$VERDI_HOME/share/NPI/lib/linux64:$VERDI_HOME/platform/linux64/bin:$LD_LIBRARY_PATH
+
+<span class="cmt"># 2. 建并激活虚拟环境（Python 3.10+）</span>
+python3.10 -m venv venv
+source venv/bin/activate
+
+<span class="cmt"># 3. 装依赖</span>
+pip install --upgrade pip
+pip install mcp
+
+<span class="cmt"># 4. 测试安装</span>
+python test_fsdb.py</code></pre>
+<h3 id="fsdb-c4">4.4 启动</h3>
+<pre><code>python server.py</code></pre>
+<p>Server 通过 stdin/stdout 走 MCP 协议通信。接入 Code Agent 的配置与 wave-mcp 类似，把 <code>command</code> 指向 <code>python server.py</code> 所在路径即可。</p>
+<h3 id="fsdb-c5">4.5 10 个工具</h3>
+<p>工具全部以 <code>fsdb_</code> 开头，命名直白，覆盖「打开 → 浏览 → 查信号 → 取波形值」这一条基础链路：</p>
+<table>
+<tr><th>工具</th><th>作用</th><th>关键参数</th></tr>
+<tr><td><code>fsdb_is_fsdb</code></td><td>判断文件是不是有效 FSDB</td><td><code>path</code></td></tr>
+<tr><td><code>fsdb_open</code></td><td>打开 FSDB 文件</td><td><code>path</code></td></tr>
+<tr><td><code>fsdb_close</code></td><td>关闭已打开的 FSDB</td><td><code>path</code></td></tr>
+<tr><td><code>fsdb_get_info</code></td><td>文件元信息（时间范围/版本/仿真日期等）</td><td><code>path</code></td></tr>
+<tr><td><code>fsdb_list_scopes</code></td><td>列出层次中的 scope</td><td><code>path</code>, <code>scope_path</code></td></tr>
+<tr><td><code>fsdb_list_signals</code></td><td>列出某 scope 下的信号</td><td><code>path</code>, <code>scope_path</code></td></tr>
+<tr><td><code>fsdb_get_signal_info</code></td><td>信号详细信息（类型/位宽/方向）</td><td><code>path</code>, <code>signal_path</code></td></tr>
+<tr><td><code>fsdb_get_signal_value</code></td><td>某时刻的信号值</td><td><code>path</code>, <code>signal_path</code>, <code>time</code>, <code>format</code></td></tr>
+<tr><td><code>fsdb_get_signal_changes</code></td><td>某时间范围内的值变化列表</td><td><code>path</code>, <code>signal_path</code>, <code>start_time</code>, <code>end_time</code>, <code>format</code></td></tr>
+<tr><td><code>fsdb_search</code></td><td>按名称模式搜索信号/scope</td><td><code>path</code>, <code>pattern</code>, <code>search_type</code>, <code>scope_path</code></td></tr>
+</table>
+<p><code>format</code> 支持 <code>bin</code> / <code>dec</code> / <code>hex</code> / <code>real</code> 四种格式，默认 <code>hex</code>。大结果集会自动截断，防止内存问题（可配置）。</p>
+<h3 id="fsdb-c6">4.6 典型工作流</h3>
+<p>六步走完一次读波形：</p>
+<div class="vflow">
+<div class="layer m1"><div class="name">① fsdb_is_fsdb</div><div class="desc">确认文件是有效 FSDB</div></div>
+<div class="link"></div>
+<div class="layer m2"><div class="name">② fsdb_open</div><div class="desc">打开波形文件</div></div>
+<div class="link"></div>
+<div class="layer m3"><div class="name">③ fsdb_list_scopes</div><div class="desc">浏览层次</div></div>
+<div class="link"></div>
+<div class="layer m4"><div class="name">④ fsdb_list_signals</div><div class="desc">列出 scope 下的信号</div></div>
+<div class="link"></div>
+<div class="layer m5"><div class="name">⑤ fsdb_get_signal_changes</div><div class="desc">取某时间范围的值变化</div></div>
+<div class="link"><span class="lbl">用完收尾</span></div>
+<div class="layer m1"><div class="name">⑥ fsdb_close</div><div class="desc">关闭文件</div></div>
+</div>
+<pre><code><span class="cmt">// 1. 判断</span>
+{ "tool": "fsdb_is_fsdb", "arguments": { "path": "waveform.fsdb" } }
+<span class="cmt">// 2. 打开</span>
+{ "tool": "fsdb_open", "arguments": { "path": "waveform.fsdb" } }
+<span class="cmt">// 3. 列顶层 scope</span>
+{ "tool": "fsdb_list_scopes", "arguments": { "path": "waveform.fsdb" } }
+<span class="cmt">// 4. 列某 scope 下的信号</span>
+{ "tool": "fsdb_list_signals", "arguments": { "path": "waveform.fsdb", "scope_path": "tb_top" } }
+<span class="cmt">// 5. 取信号值变化</span>
+{ "tool": "fsdb_get_signal_changes", "arguments": {
+    "path": "waveform.fsdb", "signal_path": "tb_top.clk",
+    "start_time": 0, "end_time": 1000, "format": "bin" } }
+<span class="cmt">// 6. 关闭</span>
+{ "tool": "fsdb_close", "arguments": { "path": "waveform.fsdb" } }</code></pre>
+</section><section class="card" id="compare">
+<h2><span class="no">5</span>对比与选型</h2>
+<p class="ref">把两个工具放在一起看，各适合什么场景</p>
+<h3 id="compare-c1">5.1 全面对比表</h3>
+<table>
+<tr><th>维度</th><th>wave-mcp</th><th>fsdb-mcp</th></tr>
+<tr><td>出品方</td><td>腾讯蓬莱实验室</td><td>社区（hjxxlogic）</td></tr>
+<tr><td>License</td><td><strong>Apache-2.0，免 License</strong></td><td>依赖 Verdi license</td></tr>
+<tr><td>波形格式</td><td>FST 直读；VCD / FSDB 自动转 FST</td><td>仅 FSDB</td></tr>
+<tr><td>技术栈</td><td>pylibfst（读 FST）+ pyslang（RTL 网表）</td><td>pynpi（Synopsys NPI）</td></tr>
+<tr><td>工具数量</td><td><strong>37 个</strong>（12 大类）</td><td>10 个</td></tr>
+<tr><td>能力边界</td><td>层次/信号/值 + 驱动分析 + X 追踪 + 波形对比 + 浏览器查看器 + 无波形静态分析</td><td>打开/浏览/查信号/取波形值（基础读链路）</td></tr>
+<tr><td>追 X 态根因</td><td><strong>有</strong>（<code>trace_x</code>）</td><td>无</td></tr>
+<tr><td>pass/fail 对比</td><td><strong>有</strong>（<code>diff_waveforms</code>）</td><td>无</td></tr>
+<tr><td>静态分析（仿真前）</td><td><strong>有</strong>（<code>open_static_session</code>）</td><td>无</td></tr>
+<tr><td>环境门槛</td><td>Python 3.10–3.13 + glibc ≥ 2.28（老机器用 bundle）</td><td>Python 3.10+ + Verdi + license</td></tr>
+<tr><td>部署</td><td>stdio / HTTP / 离线 bundle 三档</td><td>stdio（python server.py）</td></tr>
+</table>
+<h3 id="compare-c2">5.2 什么时候选哪个</h3>
+<ul>
+<li><strong>优先 wave-mcp</strong>，除非你被下面「选 fsdb-mcp」的条件卡住。它是开源路线，能力全、并发不限、不花 license 钱，还带 X 追踪和波形对比这种自动化 debug 的硬能力。</li>
+<li><strong>选 fsdb-mcp</strong> 的场景：环境里已有 Verdi + license、只想做基础的「打开 FSDB 查信号值」、不想折腾 FST 转换或网表；或者你的团队严格绑在 FSDB + Verdi 工作流上，读原始 FSDB 更省事。</li>
+<li><strong>两者不冲突</strong>：wave-mcp 也支持 FSDB（<code>convert_fsdb_to_fst</code> 自动转，转换不占 Verdi license），只是需要本机有 Verdi 的 FsdbReader 运行库。所以「只有 FSDB」不是非 fsdb-mcp 不可的理由。</li>
+</ul>
+<h3 id="compare-c3">5.3 结论</h3>
+<div class="callout green">
+<div class="title">一句话结论</div>
+<p class="lead" style="margin:0">想认真让 AI 帮你 debug——追 X 态、找驱动、对比 pass/fail——选 <strong>wave-mcp</strong>，开源免 License 且能力碾压；只想在已有 Verdi 环境里轻量读一下 FSDB 波形，选 <strong>fsdb-mcp</strong>，简单直接。作为验证工程师，wave-mcp 的 <code>trace_x</code> 和 <code>diff_waveforms</code> 是传统手动 debug 很难自动化的两块，最值得先试。</p>
+</div>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>

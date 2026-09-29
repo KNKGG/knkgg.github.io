@@ -35,5 +35,12 @@ const NOTES = [
     category: "RISC-V IOMMU",
     url: "notes/2026-09-23-riscv-iommu-源码逐模块分析.html",
     desc: "Linux 内核 RISC-V IOMMU 驱动源码逐模块拆解"
+  },
+  {
+    title: "波形 Debug 工具 · wave-mcp 与 fsdb-mcp 使用指南",
+    date: "2026-09-28",
+    category: "AI Tools",
+    url: "notes/2026-09-28-波形debug工具-使用指南.html",
+    desc: "wave-mcp 与 fsdb-mcp 两个波形调试 MCP 工具的使用方法与选型"
   }
 ];
