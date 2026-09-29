@@ -42,5 +42,12 @@ const NOTES = [
     category: "AI Tools",
     url: "notes/2026-09-28-波形debug工具-使用指南.html",
     desc: "wave-mcp 与 fsdb-mcp 两个波形调试 MCP 工具的使用方法与选型"
+  },
+  {
+    title: "Claude Skill 与 skill-seekers · 把资料自动变成 Skill",
+    date: "2026-09-28",
+    category: "AI Tools",
+    url: "notes/2026-09-28-skill-seekers使用指南.html",
+    desc: "Claude Skill 概念详解,以及 skill-seekers 工具把 PDF/网站/GitHub 转成 Skill 的用法"
   }
 ];
