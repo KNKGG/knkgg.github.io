@@ -338,6 +338,12 @@ footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-t
 <li><a class="lvl2" href="#compare-c2">7.2 什么时候选哪个</a><ul></ul></li>
 <li><a class="lvl2" href="#compare-c3">7.3 结论</a><ul></ul></li>
 </ul></li>
+<li><a class="lvl1" href="#uvm-checker">8. UVM checker 报错：三个工具各靠什么兜底</a><ul>
+<li><a class="lvl2" href="#uvm-checker-c1">8.1 checker 有两类</a><ul></ul></li>
+<li><a class="lvl2" href="#uvm-checker-c2">8.2 三种可见性</a><ul></ul></li>
+<li><a class="lvl2" href="#uvm-checker-c3">8.3 各自的兜底路径</a><ul></ul></li>
+<li><a class="lvl2" href="#uvm-checker-c4">8.4 收口</a><ul></ul></li>
+</ul></li>
 </ul></nav></aside><main class="content"><header class="hero">
 <h1>RTL 调试 MCP 工具全景 · wave-mcp / TraceWeave / xverif 与底层原理</h1>
 <div class="sub">三个主力工具——wave-mcp 走开源 FST 路线、TraceWeave 做端到端调试、xverif 是验证调试工具集，外加一个轻量补充 fsdb-mcp；以及它们共同的底层原理：波形格式、信号追踪、Verdi NPI 与特色算法</div>
@@ -406,7 +412,7 @@ footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-t
 <p class="lead">它们都是 <strong>MCP Server</strong>：把「读波形、查设计」包装成一组标准化工具，让 Claude Code 能像调用函数一样查波形、追 X 态、定位 bug。区别在于<strong>波形数据源</strong>、<strong>要不要商用 License</strong>、以及<strong>能力的深度</strong>。</p>
 <ul>
 <li><strong>wave-mcp</strong>（腾讯蓬莱实验室，Apache-2.0）：读 <strong>FST 波形 + RTL 网表</strong>，纯开源技术栈（pylibfst + pyslang），<strong>免 License</strong>。能力最强：层次探索、信号查询、驱动分析、值/X 态追踪、波形对比、浏览器波形查看器，共 37 个工具。</li>
-<li><strong>TraceWeave</strong>（gokeshenzhen，MIT）：<strong>证据驱动的端到端调试</strong>，把编译记录 + 仿真 log + VCD/FSDB 波形 + RTL 源码关联成一条「失败 → 根因」的调查链。三级降级后端（Verdi NPI → pyslang → 源码正则），38 个工具。</li>
+<li><strong>TraceWeave</strong>（gokeshenzhen，MIT）：<strong>证据驱动的端到端调试</strong>，把编译记录 + 仿真 log + VCD/FSDB 波形 + RTL 源码关联成一条「失败 → 根因」的调查链。三级降级后端（Verdi NPI → pyslang → 源码正则），<strong>四个里对 UVM TB 静态支持最专门</strong>（TB 层次、class 继承、UVM log 报错模式），38 个工具。</li>
 <li><strong>xverif</strong>（BLANK2077，MIT）：<strong>验证调试工具集</strong>，C++ 直链 Verdi NPI，10 个子工具覆盖设计/波形查询、SVA 语义、覆盖率、SV 位运算、活会话。强调「确定性」——每个结论带 evidence。</li>
 <li><strong>fsdb-mcp</strong>（hjxxlogic，社区轻量项目）：用 pynpi 读 FSDB 的<strong>最简实现</strong>，10 个工具只覆盖「打开 → 浏览 → 查信号值」这条基础链路。<em>（能力上与上面三个主力不是一个量级，只作为轻量补充，详见对比表）</em></li>
 </ul>
@@ -580,6 +586,7 @@ wave-mcp query signal_drivers --session sessions/my_module \
 <li><strong>大设计层级浏览</strong>：按需查询 instance / 子树 / 文件，验证过 5 万 instance 的合成设计。</li>
 <li><strong>时序谓词验证</strong>：<code>verify_window</code> 支持 always/never/eventually/implication，并区分 overlap 避免空洞通过。</li>
 <li><strong>波形查询 + 驱动追踪</strong>：点位/跳变/窗口/周期采样，driver/load/path 查询。</li>
+<li><strong>UVM TB 静态解析</strong>：<code>build_tb_hierarchy</code> / <code>get_tb_class_hierarchy</code> 从源码正则识别 <code>class ... extends</code>、<code>uvm_xxx::type_id::create</code>、<code>virtual interface</code>，静态搭出 TB 层次与 class 继承；<code>parse_sim_log</code> 识别 <code>UVM_ERROR</code>/<code>UVM_FATAL</code>，配合 <code>custom_patterns.yaml</code> 把项目自己的 checker/scoreboard 报错格式（如 <code>expected=0x12 actual=0x34</code>）写成规则精确定位。</li>
 </ul>
 <h3 id="tw-c3">4.3 三级降级后端</h3>
 <p>TraceWeave 的核心设计是<strong>按「准确度 vs 依赖」做梯度降级</strong>——有 license 用最准的，没有就一层层降，绝不硬扛：</p>
@@ -787,6 +794,42 @@ lint/      rules.py, temporal.py, vacuity.py     <span class="cmt"># 含空断�
 <div class="title">一句话结论</div>
 <p class="lead" style="margin:0">想认真让 AI 帮你 debug——追 X 态、找驱动、比波形——首选 <strong>wave-mcp</strong>（开源免 License、能力全）；要「log→根因」的端到端链路选 <strong>TraceWeave</strong>；要覆盖率和活会话选 <strong>xverif</strong>。fsdb-mcp 只是最低配的「读 FSDB 值」方案，作为轻量补充即可，别把它和三个主力等量齐观。</p>
 </div>
+</section><section class="card" id="uvm-checker">
+<h2><span class="no">8</span>UVM checker 报错：三个工具各靠什么兜底 <span class="tag amber">实战</span></h2>
+<p class="ref">验证最常遇到的是 checker 报 mismatch，第一步永远是分诊「TB 误报还是 DUT 真问题」。手写 UVM component checker 是三个工具覆盖最弱的地带——各自兜底路线完全不同，几乎不重叠</p>
+<h3 id="uvm-checker-c1">8.1 先分清：checker 有两类</h3>
+<ul>
+<li><strong>SVA 断言 checker</strong>：xverif 的 <code>xsva</code> 能把断言 temporal 语义降成 IR，至少「这条断言在查什么时序」是<strong>确定性可解释</strong>的。</li>
+<li><strong>手写 UVM component checker</strong>：<code>uvm_scoreboard</code> / 某个 <code>uvm_component</code> 的 <code>check_phase</code> 或 <code>run_phase</code> 里手写的 <code>if (exp != act)</code> 比对。这段比对逻辑是<strong>手写 class 代码</strong>，没有任何工具能理解它的语义——<code>expected</code> 值是运行时算出来的，不在波形、也不在 KDB 里。</li>
+</ul>
+<p>下面的「checker」指第二种，也就是重 UVM 团队最常打交道的那个。</p>
+<h3 id="uvm-checker-c2">8.2 定位它需要三种「可见性」</h3>
+<p>一个 checker 报错，要定位得靠三种可见性。三个工具恰好各自只占一种，几乎不重叠：</p>
+<table>
+<tr><th>可见性</th><th>wave-mcp</th><th>TraceWeave</th><th>xverif</th></tr>
+<tr><td>① DUT 信号实际值（actual 侧）</td><td>✅ 最强（FST + pyslang）</td><td>✅ 有（VCD / FSDB）</td><td>✅ 有（NPI + FSDB）</td></tr>
+<tr><td>② checker 代码结构（静态）</td><td>❌ 明确排除 UVM</td><td>✅ 专门做（TB 层次 + class 继承 + 报错模式）</td><td>❌ 无（只能 LLM 读源码）</td></tr>
+<tr><td>③ checker 运行时 expected 值</td><td>❌</td><td>❌（静态看不到）</td><td>✅ 唯一（借模拟器活对话）</td></tr>
+</table>
+<h3 id="uvm-checker-c3">8.3 三个工具各自的兜底路径</h3>
+<h4>wave-mcp —— 兜底 = 绕过 UVM，只证伪 DUT</h4>
+<p>它对 UVM 的态度很干脆：README 里写「单个 top 精化失败（如 UVM 环境拉不到 <code>uvm_pkg</code>）只影响该 top，健康 DUT 的网表照常提取」——<strong>把 UVM 环境当精化失败排除掉</strong>，网表里只有 DUT。所以 checker 报错时，它只能回答一个问题：「DUT 输出到底对不对」。<code>signal_values</code> / <code>trace_value</code> / <code>trace_x</code> / <code>diff_waveforms</code> 全是 DUT 侧的确定性证据；checker 为什么报错、<code>expected</code> 该是多少，它<strong>完全不碰</strong>。</p>
+<h4>TraceWeave —— 兜底 = 静态读懂 checker 长什么样</h4>
+<p>不追运行时，从<strong>源码 + 编译记录 + log</strong> 静态重建：</p>
+<ul>
+<li><code>parse_sim_log</code> 识别 <code>UVM_ERROR</code> / <code>UVM_FATAL</code>；<code>custom_patterns.yaml</code> 把项目自己的报错格式（README 原例 <code>expected=0x12 actual=0x34</code>）写成正则，精确定位是哪条 checker 报的。</li>
+<li><code>build_tb_hierarchy</code> / <code>get_tb_class_hierarchy</code> 用正则静态搭出 TB 层次和 UVM class 继承——<code>tb_hierarchy_builder.py</code> 里专门识别 <code>class ... extends</code>、<code>uvm_xxx::type_id::create</code>、<code>virtual interface</code>，找到 checker 是哪个 class、在哪 <code>create</code>。</li>
+<li><code>analyzer.py</code> 的 <code>_classify_failure</code> 还会启发式判断失败是 <code>checker/testbench issue</code> 还是更靠近 DUT，甚至「优先推荐 DUT-visible 路径而非 checker 内部」。</li>
+</ul>
+<p>但它<strong>看不到运行时 <code>expected</code> 值</strong>——class 运行时状态不在编译记录和波形里。expected 那条腿，最终仍退回 LLM 读源码推断。</p>
+<h4>xverif —— 兜底 = 运行时进 checker 读 exp/act</h4>
+<p>走 <code>xsimdebug</code> 活对话：断到 <code>check_phase</code> / 比对函数，<code>get exp</code> / <code>get act</code> 把<strong>运行时算出来的 expected 真值</strong>读出来，<code>next</code> 单步看 reference model 中间状态、<code>stack</code> 看调用栈。这是三个里<strong>唯一能看到 expected 真值</strong>的。代价是：要能重跑或复用仿真、交互式活对话，而且它<strong>没有任何静态解析 checker 代码结构的能力</strong>（无 tree-sitter，NPI 又看不到 class）。</p>
+<h3 id="uvm-checker-c4">8.4 收口：互补，但不重叠</h3>
+<div class="callout green">
+<div class="title">三条兜底，各补一段</div>
+<p class="lead" style="margin:0"><strong>wave-mcp</strong> 帮你排除 DUT（actual 对不对）· <strong>TraceWeave</strong> 帮你定位 checker 是哪段代码（静态结构 + 报错模式）· <strong>xverif</strong> 帮你读 expected 真值（运行时）。</p>
+</div>
+<p>没有任何一个能「既静态懂 checker 结构、又运行时拿 expected 值」。对<strong>重 UVM 轻 SVA</strong> 的团队，checker 报错这条高频链路里：DUT 侧确定性最全的是 wave-mcp，UVM 侧静态定位是 TraceWeave，运行时真值只有 xverif 的活会话能给——三者拼起来才接近覆盖完整闭环。</p>
 </section></main><script>
 (function () {
   var links = document.querySelectorAll('#toc a[href^="#"]');
