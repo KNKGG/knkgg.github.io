@@ -263,7 +263,7 @@ li { margin: 0.3rem 0; }
 <p class="ref">一个很具体的空白：skill-seekers 支持 C/C++、Python、JS/TS，但就是不认 SystemVerilog</p>
 <div class="callout amber">
 <div class="title">先澄清一个常见误解</div>
-<p class="lead" style="margin:0">svcode-skill-seekers <strong>不是</strong> skill-seekers 的「加强版 / 完整版 + SV 支持」。它只做一件事——把 SV/UVM 源码解析成 Skill，只有 <code>create</code> 和 <code>install</code> 两个命令，从 skill-seekers 那里复用了渲染和安装两个模块。两者是「各管一段」，不是包含关系。</p>
+<p class="lead" style="margin:0">svcode-skill-seekers <strong>不是</strong> skill-seekers 的「加强版 / 完整版 + SV 支持」。它只做一件事——把 SV/UVM 源码解析成 Skill，只有 <code>create</code>、<code>install</code>、<code>update</code> 三个命令，从 skill-seekers 那里复用了渲染和安装两个模块。两者是「各管一段」，不是包含关系。</p>
 </div>
 <p class="lead"><strong>skill-seekers 是把「现成资料」自动变成 Claude Skill 的工具</strong>：给它 PDF、文档网站、GitHub 仓库或本地代码，它提取内容、生成 <code>SKILL.md</code> + 结构化参考文件，还能 AI 增强、一键装到 <code>~/.claude/skills/</code>。</p>
 <p>但它对「本地代码」的语言支持有个天花板——原生覆盖的是 <strong>C/C++、Python、JavaScript/TypeScript</strong> 这类通用语言。而芯片验证领域的主战场 <strong>SystemVerilog / UVM</strong>，它不认。</p>
@@ -271,7 +271,7 @@ li { margin: 0.3rem 0; }
 <div class="analogy">
 <div class="lbl">一句话定位</div>
 <p style="margin:6px 0 0"><strong>skill-seekers</strong>：全能选手，多源（PDF/网站/仓库/代码）+ 多语言 + 20 多个命令。</p>
-<p style="margin:6px 0 0"><strong>svcode-skill-seekers</strong>：专精一件小事——只吃 SV/UVM 源码，吐出同款 Skill，只有 <code>create</code>、<code>install</code> 两个命令。</p>
+<p style="margin:6px 0 0"><strong>svcode-skill-seekers</strong>：专精一件小事——只吃 SV/UVM 源码，吐出同款 Skill，只有 <code>create</code>、<code>install</code>、<code>update</code> 三个命令。</p>
 </div>
 </section><section class="card" id="diff">
 <h2><span class="no">2</span>一张表看懂两者差异 <span class="tag green">对比</span></h2>
@@ -282,7 +282,7 @@ li { margin: 0.3rem 0; }
 <tr><td>输入源</td><td>PDF / 网站 / GitHub 仓库 / 本地代码</td><td>仅本地 SV 源码目录</td></tr>
 <tr><td>语言</td><td>C/C++、Python、JS/TS 等</td><td><strong>SystemVerilog / UVM</strong></td></tr>
 <tr><td>解析方式</td><td>多源适配（爬取/解析/转换）</td><td>tree-sitter-systemverilog <strong>真实 AST</strong></td></tr>
-<tr><td>命令数</td><td>20+（create/enhance/install-agent/package/config/doctor）</td><td>2（<code>create</code> / <code>install</code>）</td></tr>
+<tr><td>命令数</td><td>20+（create/enhance/install-agent/package/config/doctor）</td><td>3（<code>create</code> / <code>install</code> / <code>update</code>）</td></tr>
 <tr><td>AI 增强</td><td><code>enhance</code></td><td>无（纯本地确定性解析）</td></tr>
 <tr><td>依赖</td><td>较多（含 AI SDK、爬虫等）</td><td><strong>仅 2 个</strong>：tree-sitter + tree-sitter-systemverilog</td></tr>
 <tr><td>安装</td><td><code>pip install skill-seekers</code></td><td><code>pip install -e .</code>（自建）</td></tr>
@@ -300,16 +300,16 @@ li { margin: 0.3rem 0; }
 <div class="link"></div>
 <div class="layer m4"><div class="name">api_reference.py + skill_builder.py</div><div class="desc">生成 <code>references/api_reference/*.md</code> + <code>SKILL.md</code></div></div>
 <div class="link"></div>
-<div class="layer"><div class="name">cli.py</div><div class="desc"><code>create &lt;dir&gt;</code> 串起全流程 · <code>install &lt;skill_dir&gt;</code> 装到各 AI agent</div></div>
+<div class="layer"><div class="name">cli.py</div><div class="desc"><code>create &lt;dir&gt;</code> 串起全流程 · <code>update &lt;dir&gt;</code> 增量刷新 · <code>install &lt;skill_dir&gt;</code> 装到各 AI agent</div></div>
 </div>
 <h3 id="arch-c1">3.1 模块职责一览</h3>
 <table>
 <tr><th>模块</th><th>行数</th><th>职责</th></tr>
-<tr><td><code>systemverilog.py</code></td><td>297</td><td><strong>核心</strong>：用 tree-sitter 解析 SV，提取 class（含 extends）、方法、方法签名（参数/返回类型）、doc 注释</td></tr>
-<tr><td><code>scraper.py</code></td><td>90</td><td>遍历目录，识别 SV 扩展名，做前缀/目录/文件名过滤，产出 <code>{"files": [...]}</code></td></tr>
-<tr><td><code>api_reference.py</code></td><td>375</td><td><strong>拷贝自 skill-seekers（MIT）</strong>，把分析结果渲染成 markdown API 文档</td></tr>
-<tr><td><code>skill_builder.py</code></td><td>114</td><td>拼出 <code>SKILL.md</code>（frontmatter + 统计 + 引用指引）</td></tr>
-<tr><td><code>cli.py</code></td><td>166</td><td>命令行入口，分发 <code>create</code> / <code>install</code> 两个子命令</td></tr>
+<tr><td><code>systemverilog.py</code></td><td>301</td><td><strong>核心</strong>：用 tree-sitter 解析 SV，提取 class（含 extends）、方法、方法签名（参数/返回类型）、doc 注释</td></tr>
+<tr><td><code>scraper.py</code></td><td>149</td><td>遍历目录，识别 SV 扩展名，做前缀/目录/文件名过滤，产出 <code>{"files": [...]}</code>；增量模式按内容 sha256 对比、只重析变化文件</td></tr>
+<tr><td><code>api_reference.py</code></td><td>373</td><td><strong>拷贝自 skill-seekers（MIT）</strong>，把分析结果渲染成 markdown API 文档</td></tr>
+<tr><td><code>skill_builder.py</code></td><td>115</td><td>拼出 <code>SKILL.md</code>（frontmatter + 统计 + 引用指引）</td></tr>
+<tr><td><code>cli.py</code></td><td>239</td><td>命令行入口，分发 <code>create</code> / <code>update</code> / <code>install</code> 三个子命令</td></tr>
 <tr><td><code>install_agent.py</code></td><td>331</td><td><strong>拷贝自 skill-seekers（MIT）</strong>，把生成的 skill 目录拷贝到各 AI agent 的 skills 目录</td></tr>
 </table>
 <p>注意 <code>api_reference.py</code> 和 <code>install_agent.py</code> 的特殊身份——它们都是从 skill-seekers 原样拷贝过来的（MIT，文件头保留版权声明），这样下游「渲染 markdown」和「安装到 agent」这两步就能直接复用，不用自己重写（详见第 6 节）。</p>
@@ -407,7 +407,7 @@ _PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 
 <p>所以准确说，svcode-skill-seekers 的「原创」只有 <code>systemverilog.py</code>（SV AST 解析）和 <code>scraper.py</code>（遍历过滤），其余是「复用 skill-seekers 的两个下游模块（渲染 + 安装）+ 一个薄薄的 <code>cli.py</code>」。这是一次典型的「缝合」而非「重造」。</p>
 </section><section class="card" id="practice">
 <h2><span class="no">7</span>实战与诚实的边界 <span class="tag red">落地</span></h2>
-<p class="ref">跑通了一个真实目录，也补上了方法签名提取</p>
+<p class="ref">跑通了一个真实目录，补上了方法签名和增量更新</p>
 <h3 id="practice-c1">7.1 给 axi_vip 生成方法级 API</h3>
 <p>拿某个 AMBA 验证 IP（VIP）的 AXI 部分跑了一遍，用过滤参数只抓 <code>axi_</code> 前缀、去掉 <code>com/mti/ncv</code> 仿真器变体和 <code>.ovm./.vmm.</code> 方法学变体：</p>
 <pre><code>svcode-skill-seekers create &lt;某 AMBA VIP 目录&gt; \
@@ -428,6 +428,10 @@ svcode-skill-seekers install output --agent all --dry-run  <span class="cmt"># �
     <span class="cmt"># 遍历 tf_port_list → tf_port_item，取参数名 + 方向/类型/维度拼成 type_hint</span>
     params.append({<span class="str">"name"</span>: name, <span class="str">"type_hint"</span>: <span class="str">"..."</span>, <span class="str">"default"</span>: <span class="kw">None</span>})</code></pre>
 <p>现在产出的方法记录带上了完整签名——<code>parameters</code>（参数名 + 类型标注）和 <code>return_type</code>（返回类型）都不再是空占位。顺带还支持了 <code>// Function:</code> / <code>// Task:</code> 这种行注释形式的 docstring，让只有行注释、没有块注释的方法也能挂上说明；注释里的签名行会被识别并跳过（避免和 AST 提取的 return_type/params 重复）。</p>
+<h3 id="practice-c3">7.3 增量更新：update 命令</h3>
+<p>验证项目更新频率高时，每次 <code>create</code> 全量重析几百个文件没必要。于是加了 <code>update</code> 命令——把上次的 <code>code_analysis.json</code> 当快照，按文件<strong>内容 sha256</strong> 对比：变化/新增的文件才重新解析，已移除文件的 <code>.md</code> 删掉，未变化的直接复用：</p>
+<pre><code>svcode-skill-seekers update &lt;目录&gt; -o output   <span class="cmt"># 参数与 create 完全一致</span></code></pre>
+<p>实测（144 文件的 UVM 源码）：全量 <code>create</code> 约 1.9s，改 1 个文件的 <code>update</code> 约 0.16s，约 12 倍提速。没有历史快照时会自动回退全量。</p>
 <div class="callout amber">
 <div class="title">一句话总结</div>
 <p class="lead" style="margin:0">svcode-skill-seekers = <strong>用 tree-sitter 把 SV/UVM 源码变成真实语法树</strong>，按节点类型提取 class / extends / 方法 / doc 注释，再<strong>对齐 skill-seekers 的输出 shape</strong> 复用它的下游渲染——用最少的代码，补上 skill-seekers 不认 SystemVerilog 这块空白。</p>
