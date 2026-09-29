@@ -408,7 +408,7 @@ _PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 
 <h2><span class="no">7</span>实战与诚实的边界 <span class="tag red">落地</span></h2>
 <p class="ref">跑通了一个真实目录，也清楚哪里还没做</p>
 <h3 id="practice-c1">7.1 给 axi_vip 生成方法级 API</h3>
-<p>拿某商业 AMBA 验证 IP（VIP）的 AXI 部分跑了一遍，用过滤参数只抓 <code>axi_</code> 前缀、去掉 <code>com/mti/ncv</code> 仿真器变体和 <code>.ovm./.vmm.</code> 方法学变体：</p>
+<p>拿某个 AMBA 验证 IP（VIP）的 AXI 部分跑了一遍，用过滤参数只抓 <code>axi_</code> 前缀、去掉 <code>com/mti/ncv</code> 仿真器变体和 <code>.ovm./.vmm.</code> 方法学变体：</p>
 <pre><code>svcode-skill-seekers create &lt;某 AMBA VIP 目录&gt; \
   --filter axi_ \
   --exclude-dir com --exclude-dir mti --exclude-dir ncv \
