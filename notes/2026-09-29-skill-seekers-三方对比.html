@@ -232,7 +232,7 @@ li { margin: 0.3rem 0; }
 <li><a class="lvl1" href="#why">1. 为什么会有三个「skill-seekers」</a><ul></ul></li>
 <li><a class="lvl1" href="#diff">2. 一张表看懂三方差异</a><ul></ul></li>
 <li><a class="lvl1" href="#simple">3. simple-skill-seekers：把「AI 增强」抽掉</a><ul></ul></li>
-<li><a class="lvl1" href="#arch">4. 架构：5 个模块各司其职</a><ul>
+<li><a class="lvl1" href="#arch">4. svcode-skill-seekers 架构：5 个模块</a><ul>
 <li><a class="lvl2" href="#arch-c1">4.1 模块职责一览</a><ul></ul></li>
 </ul></li>
 <li><a class="lvl1" href="#sv">5. 接入 SystemVerilog：tree-sitter 真实 AST</a><ul>
@@ -317,8 +317,8 @@ li { margin: 0.3rem 0; }
 <p style="margin:6px 0 0">如果 skill-seekers 是「全能旗舰」，simple-skill-seekers 就是「精简版」（砍掉你不用的），svcode-skill-seekers 则是「外挂补丁」（补上它没有的）。三者不是竞争关系，而是同一个问题——「怎么把资料变成 skill」——的三个不同答案。</p>
 </div>
 </section><section class="card" id="arch">
-<h2><span class="no">4</span>架构：5 个模块各司其职 <span class="tag purple">架构</span></h2>
-<p class="ref">数据流从上到下，最后落到 skill-seekers 兼容的产物结构</p>
+<h2><span class="no">4</span>svcode-skill-seekers 架构：5 个模块各司其职 <span class="tag purple">架构</span></h2>
+<p class="ref">svcode-skill-seekers 内部的数据流从上到下，最后落到 skill-seekers 兼容的产物结构</p>
 <div class="vflow">
 <div class="layer m1"><div class="name">SV/UVM 源码目录</div><div class="desc"><code>.sv / .svh / .svp / .svi</code></div></div>
 <div class="link"></div>
