@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>波形 Debug 工具 · wave-mcp 与 fsdb-mcp 使用指南</title><style>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>RTL 调试 MCP 工具全景 · wave-mcp / TraceWeave / xverif 与底层原理</title><style>
 :root {
   --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
   --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
@@ -298,7 +298,7 @@ footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-t
 <li><a class="lvl2" href="#mcp-c4">1.4 三个核心角色</a><ul></ul></li>
 <li><a class="lvl2" href="#mcp-c5">1.5 最小例子：AI 怎么调用工具</a><ul></ul></li>
 </ul></li>
-<li><a class="lvl1" href="#overview">2. 总览：两个工具一句话</a><ul>
+<li><a class="lvl1" href="#overview">2. 总览：三个主力 + 一个轻量</a><ul>
 <li><a class="lvl2" href="#overview-c1">2.1 定位</a><ul></ul></li>
 <li><a class="lvl2" href="#overview-c2">2.2 快速选型表</a><ul></ul></li>
 </ul></li>
@@ -313,25 +313,40 @@ footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-t
 <li><a class="lvl2" href="#wave-c8">3.8 部署模式</a><ul></ul></li>
 <li><a class="lvl2" href="#wave-c9">3.9 CentOS 7 / 老机器</a><ul></ul></li>
 </ul></li>
-<li><a class="lvl1" href="#fsdb">4. fsdb-mcp：借 Verdi NPI 读 FSDB</a><ul>
-<li><a class="lvl2" href="#fsdb-c1">4.1 它是什么</a><ul></ul></li>
-<li><a class="lvl2" href="#fsdb-c2">4.2 前置依赖</a><ul></ul></li>
-<li><a class="lvl2" href="#fsdb-c3">4.3 安装</a><ul></ul></li>
-<li><a class="lvl2" href="#fsdb-c4">4.4 启动</a><ul></ul></li>
-<li><a class="lvl2" href="#fsdb-c5">4.5 10 个工具</a><ul></ul></li>
-<li><a class="lvl2" href="#fsdb-c6">4.6 典型工作流</a><ul></ul></li>
+<li><a class="lvl1" href="#traceweave">4. TraceWeave：证据驱动的端到端调试</a><ul>
+<li><a class="lvl2" href="#tw-c1">4.1 它是什么</a><ul></ul></li>
+<li><a class="lvl2" href="#tw-c2">4.2 核心能力</a><ul></ul></li>
+<li><a class="lvl2" href="#tw-c3">4.3 三级降级后端</a><ul></ul></li>
+<li><a class="lvl2" href="#tw-c4">4.4 安装与系统要求</a><ul></ul></li>
 </ul></li>
-<li><a class="lvl1" href="#compare">5. 对比与选型</a><ul>
-<li><a class="lvl2" href="#compare-c1">5.1 全面对比表</a><ul></ul></li>
-<li><a class="lvl2" href="#compare-c2">5.2 什么时候选哪个</a><ul></ul></li>
-<li><a class="lvl2" href="#compare-c3">5.3 结论</a><ul></ul></li>
+<li><a class="lvl1" href="#xverif">5. xverif：验证调试工具集</a><ul>
+<li><a class="lvl2" href="#xv-c1">5.1 它是什么</a><ul></ul></li>
+<li><a class="lvl2" href="#xv-c2">5.2 十个子工具</a><ul></ul></li>
+<li><a class="lvl2" href="#xv-c3">5.3 确定性哲学</a><ul></ul></li>
+<li><a class="lvl2" href="#xv-c4">5.4 安装门槛</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#underlying">6. 底层原理：同一条题的三条解法</a><ul>
+<li><a class="lvl2" href="#underlying-c1">6.1 底层原理地图</a><ul></ul></li>
+<li><a class="lvl2" href="#underlying-c2">6.2 波形文件格式：VCD / FSDB / FST</a><ul></ul></li>
+<li><a class="lvl2" href="#underlying-c3">6.3 信号追踪算法</a><ul></ul></li>
+<li><a class="lvl2" href="#underlying-c4">6.4 Verdi NPI 接口</a><ul></ul></li>
+<li><a class="lvl2" href="#underlying-c5">6.5 各项目特色算法</a><ul></ul></li>
+<li><a class="lvl2" href="#underlying-c6">6.6 收束：确定性 vs LLM 推理</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#compare">7. 对比与选型</a><ul>
+<li><a class="lvl2" href="#compare-c1">7.1 全面对比表</a><ul></ul></li>
+<li><a class="lvl2" href="#compare-c2">7.2 什么时候选哪个</a><ul></ul></li>
+<li><a class="lvl2" href="#compare-c3">7.3 结论</a><ul></ul></li>
 </ul></li>
 </ul></nav></aside><main class="content"><header class="hero">
-<h1>波形 Debug 工具 · wave-mcp 与 fsdb-mcp 使用指南</h1>
-<div class="sub">两个让 AI Agent 直接读波形、查信号、追根因的 MCP Server：一个走开源 FST 路线，一个借 Verdi NPI 读 FSDB</div>
+<h1>RTL 调试 MCP 工具全景 · wave-mcp / TraceWeave / xverif 与底层原理</h1>
+<div class="sub">三个主力工具——wave-mcp 走开源 FST 路线、TraceWeave 做端到端调试、xverif 是验证调试工具集，外加一个轻量补充 fsdb-mcp；以及它们共同的底层原理：波形格式、信号追踪、Verdi NPI 与特色算法</div>
 <div class="meta">
-  来源：<code>github.com/Tencent/wave-mcp</code>（Apache-2.0，37 工具）·
-  <code>github.com/hjxxlogic/fsdb-mcp</code>（10 工具，依赖 Verdi）·
+  来源：<code>Tencent/wave-mcp</code>（Apache-2.0，37 工具）·
+  <code>gokeshenzhen/TraceWeave</code>（MIT，38 工具）·
+  <code>BLANK2077/xverif</code>（MIT，10 子工具）·
+  <code>hjxxlogic/fsdb-mcp</code>（轻量，10 工具）·
+  结论均基于源码（README / pyproject.toml / 核心 .py / .cpp）·
   信息截至 2026-09
 </div>
 </header><section class="card" id="mcp">
@@ -350,11 +365,11 @@ footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-t
 <tr><td>你的 testbench（UVM 环境，消费 UVC）</td><td>AI 客户端（Claude Code 等，消费 MCP Server）</td></tr>
 <tr><td><code>uvm_driver</code> 通过 <code>vif</code> 驱动信号</td><td>AI 通过 <code>tool</code> 调用「读信号值」这个能力</td></tr>
 </table>
-<p>所以 wave-mcp / fsdb-mcp 本质上就是：<strong>有人把「读波形」这件事，按 MCP 标准封装成了 37 个 / 10 个工具函数，Claude Code 拿来就能调</strong>——就像你拿一个写好的 <code>i2c_agent</code> 插进平台直接用，不用自己从零写时序。</p>
+<p>所以 wave-mcp / TraceWeave / xverif / fsdb-mcp 本质上就是：<strong>有人把「读波形、查设计」这件事，按 MCP 标准封装成了几十个工具函数，Claude Code 拿来就能调</strong>——就像你拿一个写好的 <code>i2c_agent</code> 插进平台直接用，不用自己从零写时序。</p>
 <h3 id="mcp-c4">1.4 三个核心角色</h3>
 <ul>
 <li><strong>Client（客户端）</strong>：AI 应用，负责「决定要调哪个工具」。Claude Code、Cursor、Codex 都是。</li>
-<li><strong>Server（服务端）</strong>：能力提供方，负责「真正执行」。wave-mcp、fsdb-mcp、读 GitHub/数据库的那些都是。</li>
+<li><strong>Server（服务端）</strong>：能力提供方，负责「真正执行」。wave-mcp、TraceWeave、xverif、fsdb-mcp 都是。</li>
 <li><strong>Tool（工具）</strong>：最小调用单元——有名字、有参数、有返回值，本质就是一个「可被 AI 远程调用的函数」。</li>
 </ul>
 <p>通信走 <strong>JSON-RPC</strong>（JSON 格式的远程过程调用），传输方式就是后文出现的 <strong>stdio</strong>（子进程标准输入输出）或 <strong>HTTP</strong>。</p>
@@ -385,26 +400,30 @@ footer { color: var(--ink-mute); font-size: 0.8rem; text-align: center; margin-t
 <p class="lead" style="margin:0"><strong>AI 自己并不知道怎么读 FST 文件</strong>，它只是「喊了函数名 + 传参数」，真正的读文件动作是 server 干的。MCP 把「AI 会推理」和「工具会干活」这两件事解耦了。</p>
 </div>
 </section><section class="card" id="overview">
-<h2><span class="no">2</span>总览：两个工具一句话</h2>
-<p class="ref">先搞清楚各自是什么、解决什么问题，再看细节</p>
+<h2><span class="no">2</span>总览：三个主力 + 一个轻量</h2>
+<p class="ref">先把四个工具各自是什么、解决什么问题讲清楚，再往下看细节</p>
 <h3 id="overview-c1">2.1 定位</h3>
-<p class="lead">两者都是 <strong>MCP（Model Context Protocol）Server</strong>：把「读波形、查信号」这件事包装成一组标准化的工具，让 Claude Code 这类 AI Agent 能像调用函数一样去查波形、追 X 态、定位 bug。区别在于<strong>波形数据源</strong>和<strong>要不要商用 License</strong>。</p>
+<p class="lead">它们都是 <strong>MCP Server</strong>：把「读波形、查设计」包装成一组标准化工具，让 Claude Code 能像调用函数一样查波形、追 X 态、定位 bug。区别在于<strong>波形数据源</strong>、<strong>要不要商用 License</strong>、以及<strong>能力的深度</strong>。</p>
 <ul>
-<li><strong>wave-mcp</strong>（腾讯蓬莱实验室）：读 <strong>FST 波形 + RTL 网表</strong>，纯开源技术栈（pylibfst + pyslang），<strong>Apache-2.0 免 License</strong>。能力最强：层次探索、信号查询、驱动分析、值/X 态追踪、波形对比、浏览器波形查看器，共 37 个工具。</li>
-<li><strong>fsdb-mcp</strong>（社区项目）：读 <strong>FSDB 波形</strong>，底层是 Synopsys Verdi 的 <strong>NPI（Native Programming Interface）</strong> 库，<strong>需要 Verdi + license</strong>。功能聚焦在「打开 FSDB → 浏览层次 → 查信号 → 取波形值」这一条基础链路，共 10 个工具。</li>
+<li><strong>wave-mcp</strong>（腾讯蓬莱实验室，Apache-2.0）：读 <strong>FST 波形 + RTL 网表</strong>，纯开源技术栈（pylibfst + pyslang），<strong>免 License</strong>。能力最强：层次探索、信号查询、驱动分析、值/X 态追踪、波形对比、浏览器波形查看器，共 37 个工具。</li>
+<li><strong>TraceWeave</strong>（gokeshenzhen，MIT）：<strong>证据驱动的端到端调试</strong>，把编译记录 + 仿真 log + VCD/FSDB 波形 + RTL 源码关联成一条「失败 → 根因」的调查链。三级降级后端（Verdi NPI → pyslang → 源码正则），38 个工具。</li>
+<li><strong>xverif</strong>（BLANK2077，MIT）：<strong>验证调试工具集</strong>，C++ 直链 Verdi NPI，10 个子工具覆盖设计/波形查询、SVA 语义、覆盖率、SV 位运算、活会话。强调「确定性」——每个结论带 evidence。</li>
+<li><strong>fsdb-mcp</strong>（hjxxlogic，社区轻量项目）：用 pynpi 读 FSDB 的<strong>最简实现</strong>，10 个工具只覆盖「打开 → 浏览 → 查信号值」这条基础链路。<em>（能力上与上面三个主力不是一个量级，只作为轻量补充，详见对比表）</em></li>
 </ul>
 <div class="analogy">
-<div class="lbl">类比：两种读盘方式</div>
-<p style="margin:6px 0 0">wave-mcp 像<strong>自己造了台开源读盘器</strong>，读的是 FST 这种开放格式，还能额外读懂 RTL 源码里的连接关系——不花钱、随便并发。</p>
-<p style="margin:6px 0 0">fsdb-mcp 像<strong>租用 Verdi 的官方读盘器</strong>，读的是 FSDB 这种闭源格式，读得又全又准，但要用 Verdi 的 license 开门。</p>
+<div class="lbl">一句话定位</div>
+<p style="margin:6px 0 0"><strong>wave-mcp</strong>：开源路线的全能选手，免 License 且能力全。</p>
+<p style="margin:6px 0 0"><strong>TraceWeave</strong>：端到端的「从 log 到根因」调查员，有/无 Verdi 都能用。</p>
+<p style="margin:6px 0 0"><strong>xverif</strong>：确定性优先的工具集，覆盖到 SVA、覆盖率、活会话。</p>
+<p style="margin:6px 0 0"><strong>fsdb-mcp</strong>：最低配的「读 FSDB 值」方案，仅基础读链路。</p>
 </div>
 <h3 id="overview-c2">2.2 快速选型表</h3>
 <table>
 <tr><th>你的情况</th><th>推荐</th><th>理由</th></tr>
 <tr><td>手里是 FST / VCD 波形，或没有 Verdi license</td><td><strong>wave-mcp</strong></td><td>免 License，FST/VCD 开箱即用，能力全</td></tr>
-<tr><td>只有 FSDB，且机器装了 Verdi + license</td><td>两者都行</td><td>wave-mcp 能把 FSDB 转 FST 再读（转换不占 license）；fsdb-mcp 直接读</td></tr>
-<tr><td>要追 X 态根因、做驱动/扇入分析、pass/fail 波形对比</td><td><strong>wave-mcp</strong></td><td>这些是 wave-mcp 的强项，fsdb-mcp 没有</td></tr>
-<tr><td>只要基础读波形（查信号值/变化），环境里已有 Verdi</td><td><strong>fsdb-mcp</strong></td><td>轻量、直接，工具少好上手</td></tr>
+<tr><td>想从失败 log 一路追到根因，有 Verdi 环境</td><td><strong>TraceWeave</strong></td><td>端到端调试链，三级降级有/无 license 都能跑</td></tr>
+<tr><td>要覆盖率、SVA 解释、活会话，能接受编译门槛</td><td><strong>xverif</strong></td><td>确定性工具集，覆盖验证调试全链路</td></tr>
+<tr><td>只在已有 Verdi 环境里轻量读一下 FSDB 值</td><td><strong>fsdb-mcp</strong></td><td>简单直接，但只有基础读链路</td></tr>
 </table>
 </section><section class="card" id="wave">
 <h2><span class="no">3</span>wave-mcp：开源免 License 的波形调试 <span class="tag green">Apache-2.0</span></h2>
@@ -537,112 +556,236 @@ wave-mcp query signal_drivers --session sessions/my_module \
 <li><strong>在容器里跑</strong>：如 <code>python:3.11-slim</code>，绕开平台差异，最省事。</li>
 <li>bundle 自带独立 Python 3.11，<strong>与系统 Python 无关</strong>，所以目标机 Python 是 3.8 / 3.9 也能用。</li>
 </ul>
-</section><section class="card" id="fsdb">
-<h2><span class="no">4</span>fsdb-mcp：借 Verdi NPI 读 FSDB <span class="tag amber">需 license</span></h2>
-<p class="ref">社区项目 hjxxlogic/fsdb-mcp，10 个工具，底层是 Synopsys NPI</p>
-<h3 id="fsdb-c1">4.1 它是什么</h3>
-<p class="lead">一个读 FSDB（Fast Signal Database）波形的 MCP Server，通过 MCP 协议提供对 FSDB 文件的程序化访问，让 AI 助手能查波形数据、信号、scope、值变化。</p>
-<p>底层走 Synopsys 的 <strong>NPI（Native Programming Interface）</strong>——Verdi 自带的 Python 绑定（<code>pynpi</code>），所以读的是 FSDB 这种闭源格式，读得又全又准，代价是要有 Verdi 环境和 license。</p>
-<h3 id="fsdb-c2">4.2 前置依赖</h3>
+</section><section class="card" id="traceweave">
+<h2><span class="no">4</span>TraceWeave：证据驱动的端到端调试 <span class="tag purple">38 工具</span></h2>
+<p class="ref">gokeshenzhen/TraceWeave，MIT，把编译记录 + 仿真 log + 波形 + RTL 源码关联成一条「失败 → 根因」的调查链</p>
+<h3 id="tw-c1">4.1 它是什么</h3>
+<p class="lead">一个<strong>证据驱动的 RTL 仿真调试 MCP Server</strong>。它把零散的仿真证据——编译记录、仿真日志、VCD/FSDB 波形、层级、RTL 源码、连接关系——整合起来，让 Agent 自主走完这条调查链：</p>
+<div class="vflow">
+<div class="layer m1"><div class="name">哪里失败</div><div class="desc">仿真 log / 编译记录里的 error、timeout、mismatch</div></div>
+<div class="link"></div>
+<div class="layer m2"><div class="name">什么时候失败</div><div class="desc">定位到具体时间窗、接口</div></div>
+<div class="link"></div>
+<div class="layer m3"><div class="name">哪个接口 / 信号异常</div><div class="desc">sweep_handshakes 扫描协议健康度</div></div>
+<div class="link"></div>
+<div class="layer m4"><div class="name">谁驱动它</div><div class="desc">driver / load / path 追踪</div></div>
+<div class="link"></div>
+<div class="layer m5"><div class="name">对应 RTL 在哪</div><div class="desc">回溯到源码文件 + 行号</div></div>
+</div>
+<p>和 wave-mcp「聚焦波形」不同，TraceWeave 的卖点是<strong>把 log 和波形、源码三者关联</strong>——wave-mcp 不看仿真 log 的 error 定位，TraceWeave 正是从这里切入。</p>
+<h3 id="tw-c2">4.2 核心能力</h3>
+<ul>
+<li><strong>GiB 级 log 解析</strong>：<code>parse_sim_log</code> 验证过 1 GiB / 200 万行日志，前后中段的 error 全都能找到。</li>
+<li><strong>批量握手检查</strong>：<code>sweep_handshakes</code> 一次扫全芯片 valid/ready 与 AHB 接口，返回 stall、死锁、x-while-valid、payload 不保持等事实表（实测 7.8 万信号设计、35 个接口约 4.65 分钟）。</li>
+<li><strong>大设计层级浏览</strong>：按需查询 instance / 子树 / 文件，验证过 5 万 instance 的合成设计。</li>
+<li><strong>时序谓词验证</strong>：<code>verify_window</code> 支持 always/never/eventually/implication，并区分 overlap 避免空洞通过。</li>
+<li><strong>波形查询 + 驱动追踪</strong>：点位/跳变/窗口/周期采样，driver/load/path 查询。</li>
+</ul>
+<h3 id="tw-c3">4.3 三级降级后端</h3>
+<p>TraceWeave 的核心设计是<strong>按「准确度 vs 依赖」做梯度降级</strong>——有 license 用最准的，没有就一层层降，绝不硬扛：</p>
+<table>
+<tr><th>级</th><th>后端</th><th>依赖</th><th>准确度</th></tr>
+<tr><td>1</td><td><code>VerdiNpiBackend</code></td><td>Verdi KDB + license</td><td>最准（和仿真同源）</td></tr>
+<tr><td>2</td><td>Source Graph（pyslang）</td><td>免 license，但要 pyslang</td><td>中</td></tr>
+<tr><td>3</td><td><code>StaticConnectivityBackend</code></td><td>纯 Python 源码正则，永远可用、不耗 license</td><td>最低</td></tr>
+</table>
+<p>所以「有/无 Verdi license」它都能跑：有 license 走 NPI 精确分析，没 license 退回 pyslang 或纯正则做 log/VCD 分析。详细实现见 <a href="#underlying-c5">6.5 节</a>。</p>
+<h3 id="tw-c4">4.4 安装与系统要求</h3>
+<table>
+<tr><th>项目</th><th>要求</th></tr>
+<tr><td>Python</td><td><code>3.11+</code></td></tr>
+<tr><td>core 依赖</td><td><code>anyio</code> / <code>mcp==1.27.0</code> / <code>pydantic>=2.7</code> / <code>PyYAML</code>（纯 Python，glibc 2.17 大概率可装）</td></tr>
+<tr><td>pyslang（可选）</td><td><code>11.0.0</code>，仅 Source Graph 后端需要</td></tr>
+<tr><td>Verdi（可选）</td><td>走 NPI / FSDB 时才需要</td></tr>
+</table>
+<p>两种安装：<strong>Repository</strong>（有 Verdi 环境，FSDB / Source Graph / NPI 全能力）和 <strong>PyPI</strong>（<code>pip install traceweave-mcp</code>，log / VCD 分析 + 免 license 的 Source Graph）。<code>pyslang</code> 是<strong>可选依赖</strong>——有 Verdi license 走 NPI 后端就能绕开它，这对 CentOS 7（glibc 2.17 装不上 pyslang）是个关键出路。</p>
+</section><section class="card" id="xverif">
+<h2><span class="no">5</span>xverif：验证调试工具集 <span class="tag red">确定性</span></h2>
+<p class="ref">BLANK2077/xverif，MIT，C++ 直链 Verdi NPI，工具集 + MCP + skill 三合一</p>
+<h3 id="xv-c1">5.1 它是什么</h3>
+<p class="lead">xverif 不是单一 MCP，而是一个<strong>芯片验证调试工具集</strong>：底层 10 个 CLI 子工具，中间一个统一 MCP 入口，顶层还带 Claude Code skill（教 AI 怎么 debug）。它强调<strong>「确定性」</strong>——每个结论带 <code>evidence</code>，语义靠编译不靠 LLM 猜。</p>
+<div class="callout amber">
+<div class="title">和其他三个的关键区别</div>
+<p class="lead" style="margin:0">wave-mcp / TraceWeave / fsdb-mcp 都只是「MCP Server」；xverif 是<strong>工具集 + MCP + skill 三合一</strong>。skill 负责「教 AI 怎么 debug」，MCP/工具负责「执行 debug 动作」，这是它独有的。</p>
+</div>
+<h3 id="xv-c2">5.2 十个子工具</h3>
+<table>
+<tr><th>子工具</th><th>作用</th></tr>
+<tr><td><code>xdebug</code></td><td>设计 / 波形事实查询（C++ 直链 NPI），驱动/负载/路径 + FSDB 波形</td></tr>
+<tr><td><code>xsva</code></td><td>把 SVA 时序语义编译成 IR，确定性解释（含空断言 vacuity 检查）</td></tr>
+<tr><td><code>xcov</code></td><td>VCS/Verdi 覆盖率数据库查询</td></tr>
+<tr><td><code>xsimdebug</code></td><td>驱动<strong>活的</strong> VCS UCLI / Xcelium Tcl 调试会话（打断点、force、单步）</td></tr>
+<tr><td><code>xbit</code></td><td>纯 Python 的 SystemVerilog 位运算 / 字面量 / 表达式求值器</td></tr>
+<tr><td><code>xentry</code></td><td>多拍字节片段解码成配置的字段</td></tr>
+<tr><td><code>xloc</code></td><td>UVM log 源位置压缩 / 还原</td></tr>
+<tr><td><code>xwiki</code></td><td>验证项目持久知识（skill）</td></tr>
+<tr><td><code>xwaveform</code></td><td>把波形数据渲染成 JPG + 统计</td></tr>
+<tr><td><code>xverif-mcp</code></td><td>统一 stdio MCP 入口</td></tr>
+</table>
+<p>其中最独特的是 <code>xsimdebug</code>（活会话）和 <code>xcov</code>（覆盖率）——另外三个工具完全没有。活会话让 AI 能像你操作 Verdi 交互调试那样：设断点、force 信号、单步看逻辑。</p>
+<h3 id="xv-c3">5.3 确定性哲学</h3>
+<p>xverif 的所有命令默认输出 <strong>XOUT</strong> 结构化文本（<code>@xdebug.trace.driver.v1</code> 这类 header + <code>target:</code>/<code>summary:</code>/<code>evidence:</code>/<code>next:</code> 段），每个回答都带证据来源。设计意图很明确：<strong>把「确定性计算」和「LLM 推理」严格分开</strong>——查驱动、算位运算、编译 SVA 这些交给工具（确定性），AI 只在确定的事实上做推理（不幻觉）。</p>
+<h3 id="xv-c4">5.4 安装门槛</h3>
 <table>
 <tr><th>依赖</th><th>要求</th></tr>
-<tr><td>Python</td><td><code>3.10+</code>（MCP SDK 要求）</td></tr>
-<tr><td>Synopsys Verdi</td><td>带 NPI 支持</td></tr>
-<tr><td><code>VERDI_HOME</code></td><td>指向 Verdi 安装目录</td></tr>
-<tr><td>pynpi</td><td>随 Verdi 附带</td></tr>
-<tr><td>Verdi license</td><td>有效 license</td></tr>
+<tr><td>GCC</td><td><code>5.0+</code>（编译 C++ 链 NPI）</td></tr>
+<tr><td>Python</td><td><code>3.11+</code>（xverif-mcp / xsva / xcov）；<code>3.10+</code>（xbit 等）</td></tr>
+<tr><td>Verdi</td><td>V-2023.12-SP2（开发基准），NPI 签名随版本可能变</td></tr>
+<tr><td>license</td><td>需要 Synopsys license（NPI / FSDB / coverage）</td></tr>
 </table>
-<h3 id="fsdb-c3">4.3 安装</h3>
-<pre><code><span class="cmt"># 1. 设环境</span>
-export VERDI_HOME=/path/to/verdi
-export LD_LIBRARY_PATH=$VERDI_HOME/share/NPI/lib/linux64:$VERDI_HOME/platform/linux64/bin:$LD_LIBRARY_PATH
-
-<span class="cmt"># 2. 建并激活虚拟环境（Python 3.10+）</span>
-python3.10 -m venv venv
-source venv/bin/activate
-
-<span class="cmt"># 3. 装依赖</span>
-pip install --upgrade pip
-pip install mcp
-
-<span class="cmt"># 4. 测试安装</span>
-python test_fsdb.py</code></pre>
-<h3 id="fsdb-c4">4.4 启动</h3>
-<pre><code>python server.py</code></pre>
-<p>Server 通过 stdin/stdout 走 MCP 协议通信。接入 Code Agent 的配置与 wave-mcp 类似，把 <code>command</code> 指向 <code>python server.py</code> 所在路径即可。</p>
-<h3 id="fsdb-c5">4.5 10 个工具</h3>
-<p>工具全部以 <code>fsdb_</code> 开头，命名直白，覆盖「打开 → 浏览 → 查信号 → 取波形值」这一条基础链路：</p>
+<p>门槛是四个工具里最高的：<strong>要编译 C++、要处理 libstdc++ dual ABI 匹配本地 Verdi 库（<code>make -C xdebug npi-toolchain-check</code> 预检）</strong>，且作者明说「不保证在所有环境编译」。但它的 Python 依赖全是纯 Python（无 C 扩展 wheel），<strong>不吃 glibc 2.17 的坑</strong>——对 CentOS 7 反而比 wave-mcp 更容易落地。</p>
+</section><section class="card" id="underlying">
+<h2><span class="no">6</span>底层原理：同一条题的三条解法 <span class="tag blue">深入</span></h2>
+<p class="ref">三个主力工具表面是「让 AI 看波形」，底层其实是同一道题——如何可靠地把「设计结构」和「波形时序」喂给 AI，同时防住 LLM 胡编根因</p>
+<h3 id="underlying-c1">6.1 底层原理地图</h3>
+<p>三个工具定位不同，但底层有三个绕不开的<strong>共同地基</strong>：</p>
+<ol>
+<li><strong>波形文件格式解析</strong>——都得读波形，但格式不同（VCD / FSDB / FST）；</li>
+<li><strong>设计网表构建</strong>——从 RTL elaborate 出「层次 + 信号 + 连接关系」；</li>
+<li><strong>信号追踪</strong>——debug 的核心：给定一个信号，算出「谁驱动它、它连到哪」。</li>
+</ol>
+<p>在三块地基之上，每个工具又押注了不同的技术路线：</p>
 <table>
-<tr><th>工具</th><th>作用</th><th>关键参数</th></tr>
-<tr><td><code>fsdb_is_fsdb</code></td><td>判断文件是不是有效 FSDB</td><td><code>path</code></td></tr>
-<tr><td><code>fsdb_open</code></td><td>打开 FSDB 文件</td><td><code>path</code></td></tr>
-<tr><td><code>fsdb_close</code></td><td>关闭已打开的 FSDB</td><td><code>path</code></td></tr>
-<tr><td><code>fsdb_get_info</code></td><td>文件元信息（时间范围/版本/仿真日期等）</td><td><code>path</code></td></tr>
-<tr><td><code>fsdb_list_scopes</code></td><td>列出层次中的 scope</td><td><code>path</code>, <code>scope_path</code></td></tr>
-<tr><td><code>fsdb_list_signals</code></td><td>列出某 scope 下的信号</td><td><code>path</code>, <code>scope_path</code></td></tr>
-<tr><td><code>fsdb_get_signal_info</code></td><td>信号详细信息（类型/位宽/方向）</td><td><code>path</code>, <code>signal_path</code></td></tr>
-<tr><td><code>fsdb_get_signal_value</code></td><td>某时刻的信号值</td><td><code>path</code>, <code>signal_path</code>, <code>time</code>, <code>format</code></td></tr>
-<tr><td><code>fsdb_get_signal_changes</code></td><td>某时间范围内的值变化列表</td><td><code>path</code>, <code>signal_path</code>, <code>start_time</code>, <code>end_time</code>, <code>format</code></td></tr>
-<tr><td><code>fsdb_search</code></td><td>按名称模式搜索信号/scope</td><td><code>path</code>, <code>pattern</code>, <code>search_type</code>, <code>scope_path</code></td></tr>
+<tr><th>项目</th><th>特色底层</th></tr>
+<tr><td><strong>wave-mcp</strong></td><td>pyslang 网表 + <strong>网表自愈</strong>；FST 直读 + <code>fsdb2fst</code> 转换器；<code>trace_engine</code> 反向追 X</td></tr>
+<tr><td><strong>TraceWeave</strong></td><td><strong>三级后端降级</strong>（NPI → pyslang → Legacy Static）；FSDB 走 C++ wrapper；<code>divergence_*.py</code> 波形 diff；<code>handshake_sweep.py</code> 协议扫描</td></tr>
+<tr><td><strong>xverif</strong></td><td><strong>C++ 直调 NPI</strong>（dispatcher/action 架构）；<code>xsva</code> 把 SVA 编译成 IR；<code>xbit</code> 是纯 Python 的 SV 位运算求值器</td></tr>
 </table>
-<p><code>format</code> 支持 <code>bin</code> / <code>dec</code> / <code>hex</code> / <code>real</code> 四种格式，默认 <code>hex</code>。大结果集会自动截断，防止内存问题（可配置）。</p>
-<h3 id="fsdb-c6">4.6 典型工作流</h3>
-<p>六步走完一次读波形：</p>
-<div class="vflow">
-<div class="layer m1"><div class="name">① fsdb_is_fsdb</div><div class="desc">确认文件是有效 FSDB</div></div>
-<div class="link"></div>
-<div class="layer m2"><div class="name">② fsdb_open</div><div class="desc">打开波形文件</div></div>
-<div class="link"></div>
-<div class="layer m3"><div class="name">③ fsdb_list_scopes</div><div class="desc">浏览层次</div></div>
-<div class="link"></div>
-<div class="layer m4"><div class="name">④ fsdb_list_signals</div><div class="desc">列出 scope 下的信号</div></div>
-<div class="link"></div>
-<div class="layer m5"><div class="name">⑤ fsdb_get_signal_changes</div><div class="desc">取某时间范围的值变化</div></div>
-<div class="link"><span class="lbl">用完收尾</span></div>
-<div class="layer m1"><div class="name">⑥ fsdb_close</div><div class="desc">关闭文件</div></div>
-</div>
-<pre><code><span class="cmt">// 1. 判断</span>
-{ "tool": "fsdb_is_fsdb", "arguments": { "path": "waveform.fsdb" } }
-<span class="cmt">// 2. 打开</span>
-{ "tool": "fsdb_open", "arguments": { "path": "waveform.fsdb" } }
-<span class="cmt">// 3. 列顶层 scope</span>
-{ "tool": "fsdb_list_scopes", "arguments": { "path": "waveform.fsdb" } }
-<span class="cmt">// 4. 列某 scope 下的信号</span>
-{ "tool": "fsdb_list_signals", "arguments": { "path": "waveform.fsdb", "scope_path": "tb_top" } }
-<span class="cmt">// 5. 取信号值变化</span>
-{ "tool": "fsdb_get_signal_changes", "arguments": {
-    "path": "waveform.fsdb", "signal_path": "tb_top.clk",
-    "start_time": 0, "end_time": 1000, "format": "bin" } }
-<span class="cmt">// 6. 关闭</span>
-{ "tool": "fsdb_close", "arguments": { "path": "waveform.fsdb" } }</code></pre>
-</section><section class="card" id="compare">
-<h2><span class="no">5</span>对比与选型</h2>
-<p class="ref">把两个工具放在一起看，各适合什么场景</p>
-<h3 id="compare-c1">5.1 全面对比表</h3>
+<h3 id="underlying-c2">6.2 波形文件格式：VCD / FSDB / FST</h3>
+<p>这是「随机访问 vs 顺序访问」的分水岭，决定了三条技术路线。</p>
 <table>
-<tr><th>维度</th><th>wave-mcp</th><th>fsdb-mcp</th></tr>
-<tr><td>出品方</td><td>腾讯蓬莱实验室</td><td>社区（hjxxlogic）</td></tr>
-<tr><td>License</td><td><strong>Apache-2.0，免 License</strong></td><td>依赖 Verdi license</td></tr>
-<tr><td>波形格式</td><td>FST 直读；VCD / FSDB 自动转 FST</td><td>仅 FSDB</td></tr>
-<tr><td>技术栈</td><td>pylibfst（读 FST）+ pyslang（RTL 网表）</td><td>pynpi（Synopsys NPI）</td></tr>
-<tr><td>工具数量</td><td><strong>37 个</strong>（12 大类）</td><td>10 个</td></tr>
-<tr><td>能力边界</td><td>层次/信号/值 + 驱动分析 + X 追踪 + 波形对比 + 浏览器查看器 + 无波形静态分析</td><td>打开/浏览/查信号/取波形值（基础读链路）</td></tr>
-<tr><td>追 X 态根因</td><td><strong>有</strong>（<code>trace_x</code>）</td><td>无</td></tr>
-<tr><td>pass/fail 对比</td><td><strong>有</strong>（<code>diff_waveforms</code>）</td><td>无</td></tr>
-<tr><td>静态分析（仿真前）</td><td><strong>有</strong>（<code>open_static_session</code>）</td><td>无</td></tr>
-<tr><td>环境门槛</td><td>Python 3.10–3.13 + glibc ≥ 2.28（老机器用 bundle）</td><td>Python 3.10+ + Verdi + license</td></tr>
-<tr><td>部署</td><td>stdio / HTTP / 离线 bundle 三档</td><td>stdio（python server.py）</td></tr>
+<tr><th></th><th>VCD</th><th>FSDB</th><th>FST</th></tr>
+<tr><td>性质</td><td>纯文本（ASCII）</td><td>Synopsys 私有二进制</td><td>开源二进制（GTKWave/fstapi）</td></tr>
+<tr><td>体积</td><td>最大（FST 的 ~50 倍）</td><td>GB 级</td><td>最小（块压缩）</td></tr>
+<tr><td>随机访问</td><td>❌ 只能顺序解析</td><td>✅（经 FSDB Reader）</td><td>✅ 快（这是它的卖点）</td></tr>
+<tr><td>谁能读</td><td>任何工具</td><td>只能 Synopsys 库</td><td>开源库（pylibfst）</td></tr>
 </table>
-<h3 id="compare-c2">5.2 什么时候选哪个</h3>
+<p><strong>VCD 底层</strong>：头部 <code>$var</code> 声明（信号 → 短 ID 码），正文 <code>#时间戳</code> + 一堆 <code>值 ID码</code> 变化记录。逐行顺序写，读某时刻必须从头扫。</p>
+<p><strong>FSDB 底层</strong>：Synopsys 私有二进制，波形值 + 元数据打包 + 索引支持随机访问，唯一合法读法是调 FSDB Reader 库。</p>
+<p><strong>FST 底层</strong>：波形值按<strong>时间块（block）</strong>组织，块间双向链表串起来——能前后随机跳转。块内 lz4 / fastlz / zlib 压缩。</p>
+<h4>三个工具各自的读取策略</h4>
 <ul>
-<li><strong>优先 wave-mcp</strong>，除非你被下面「选 fsdb-mcp」的条件卡住。它是开源路线，能力全、并发不限、不花 license 钱，还带 X 追踪和波形对比这种自动化 debug 的硬能力。</li>
-<li><strong>选 fsdb-mcp</strong> 的场景：环境里已有 Verdi + license、只想做基础的「打开 FSDB 查信号值」、不想折腾 FST 转换或网表；或者你的团队严格绑在 FSDB + Verdi 工作流上，读原始 FSDB 更省事。</li>
-<li><strong>两者不冲突</strong>：wave-mcp 也支持 FSDB（<code>convert_fsdb_to_fst</code> 自动转，转换不占 Verdi license），只是需要本机有 Verdi 的 FsdbReader 运行库。所以「只有 FSDB」不是非 fsdb-mcp 不可的理由。</li>
+<li><strong>wave-mcp：统一到 FST</strong>——「FST 支持快速随机访问，正好匹配 AI 的点查询工作负载」。VCD 走 <code>vcd2fst</code>、FSDB 走自带的 <code>fsdb2fst</code>，一切先转 FST 再读。</li>
+<li><strong>TraceWeave：直接读 FSDB</strong>——<code>fsdb_parser.py</code> 用 <code>ctypes</code> 调自己写的 <code>libfsdb_wrapper.so</code>；另有内置 VCD parser 兜底。</li>
+<li><strong>xverif：也直接读 FSDB</strong>——<code>xdebug</code> 的 C++ 引擎直链 Synopsys 库。</li>
 </ul>
-<h3 id="compare-c3">5.3 结论</h3>
+<div class="callout amber">
+<div class="title">最核心的洞察</div>
+<p class="lead" style="margin:0">「随机访问 vs 顺序访问」是三条设计分叉的根。人看波形是<strong>顺序浏览</strong>；AI agent 是<strong>大量随机点查询</strong>（追 X 要反着跳、diff 要跳到分歧时刻）。所以 wave-mcp 死磕 FST（免 license + 随机访问），TraceWeave/xverif 走 FSDB Reader（借 Verdi 现成的索引）。</p>
+</div>
+<h3 id="underlying-c3">6.3 信号追踪算法</h3>
+<p>给定一个信号，算出「谁驱动它、它连到哪」——三种实现，正好对应三个工具。</p>
+<table>
+<tr><th>工具</th><th>数据来源</th><th>追踪方式</th></tr>
+<tr><td><strong>wave-mcp</strong></td><td>pyslang 自己 elaborate</td><td><strong>值驱动（value-informed）反向追踪</strong></td></tr>
+<tr><td><strong>TraceWeave</strong></td><td>自己编译成 ConnectivityIR</td><td><strong>纯结构图遍历</strong>（不依赖波形值）</td></tr>
+<tr><td><strong>xverif</strong></td><td>借 Verdi 已 elaborate 的 KDB</td><td><strong>直接调 NPI 的 driver/load API</strong></td></tr>
+</table>
+<h4>wave-mcp：值驱动反向追踪</h4>
+<p>核心是 <code>trace_value</code> / <code>trace_x</code> 两个反向驱动链遍历，关键在<strong>结构数据 + 时序数据结合</strong>：</p>
+<pre><code><span class="cmt"># trace_engine.py 的 docstring</span>
+<span class="cmt"># Structural data comes from the elaborated netlist (accurate).</span>
+<span class="cmt"># Temporal decisions (which branch / fan-in is active) use FST values</span>
+<span class="cmt"># and are best-effort.</span></code></pre>
+<ul>
+<li><strong>多驱动冲突检测</strong>：用 FST 值做分支守卫（branch-guard）求值，同时 active ≥2 就并行暴露所有驱动（源码 <code>_conflict</code>，注释 <code>bus contention -&gt; X</code>）。</li>
+<li><strong>追 X 的 <code>trace_x</code></strong>：反向走但只沿「该时刻是 X」的扇入走，定位 X 根因。</li>
+<li><strong>识别时序元素</strong>：遇到 nonblocking 赋值标注 "latched from a previous cycle"，即它<strong>知道自己跨 cycle 追</strong>。</li>
+</ul>
+<h4>TraceWeave：纯结构 IR 图遍历</h4>
+<p>不依赖波形值，先把设计编译成 <code>ConnectivityIR</code> 图再做纯图遍历：</p>
+<ul>
+<li><strong>端口/接口绑定 = 透明的层级边</strong>（跨模块追踪靠它）；</li>
+<li><strong>源赋值 = 终端的驱动/消费者事实</strong>（driver/load 查询查它）；</li>
+<li><strong>有向组合边用于路径查询，但「时序边界从不被跨越」</strong>——遇到寄存器就停，不像 wave-mcp 那样跨 cycle 追。</li>
+</ul>
+<div class="analogy">
+<div class="lbl">三种「拿到驱动关系」的方式 = 三种 elaborate 来源</div>
+<p style="margin:6px 0 0"><strong>自己 elaborate</strong>（pyslang，wave-mcp）：免费可控，但和仿真器的 elaborate 可能有差异；</p>
+<p style="margin:6px 0 0"><strong>自己编译 IR</strong>（TraceWeave）：不依赖波形值、可做置信度分级，但停在时序边界，追不了跨 cycle 的 X；</p>
+<p style="margin:6px 0 0"><strong>借 Verdi 的 elaborate 结果</strong>（xverif）：和仿真器完全一致、最准，但绑死 license。</p>
+</div>
+<p>这解释了一个实际现象：追 X 态根因，wave-mcp 的 <code>trace_x</code> 能跨 cycle 沿 X 扇入追（因为它有值），TraceWeave 追到寄存器就停——这是它们 debug 能力的<strong>真实边界差</strong>，不是宣传话术。</p>
+<h3 id="underlying-c4">6.4 Verdi NPI 接口</h3>
+<p><strong>NPI（Novas Programming Interface）</strong> 是 Synopsys Verdi 的编程接口，让第三方程序访问 Verdi 已 elaborate 的设计数据。前提链：设计先用 Verdi/VCS 编译成 <strong>KDB</strong> → NPI 库（<code>libnpi.so</code>）从 KDB 读网表、驱动/负载、FSDB。</p>
+<p>关键价值：<strong>NPI 读到的驱动/负载和仿真器用同一份 KDB，所以和仿真完全一致</strong>——不会像 pyslang「自己再 elaborate 一遍」产生偏差。</p>
+<h4>两种语言绑定</h4>
+<table>
+<tr><th></th><th>TraceWeave</th><th>xverif</th></tr>
+<tr><td>绑定方式</td><td><strong>pynpi</strong>（Synopsys 官方 Python 封装）</td><td><strong>C++ 直接链 libnpi.so</strong></td></tr>
+<tr><td>调用链</td><td>Python → pynpi → libnpi.so → KDB</td><td>C++ 进程（xdebug）→ libnpi.so → KDB</td></tr>
+<tr><td>好处</td><td>MCP server 是 Python，无缝集成</td><td>性能好、可控</td></tr>
+<tr><td>代价</td><td>依赖 Verdi 的 Python 环境</td><td>要编译 C++（GCC 5.0+、libstdc++ ABI）</td></tr>
+</table>
+<p>从 <code>npi_dynamic.py</code> 能挖出 NPI 的核心 API——debug 时真正用到的原子操作：</p>
+<pre><code>net.driver_list()        <span class="cmt"># 拿一个信号的所有驱动</span>
+net.load_list()          <span class="cmt"># 拿一个信号的所有负载</span>
+net.is_generated()       <span class="cmt"># 是否 Verdi 合成的中间网</span>
+net.is_literal()         <span class="cmt"># 是否字面量（常量）</span>
+net.type() == <span class="str">"npiNlConcatNet"</span>  <span class="cmt"># 是否拼接网 {a,b}</span></code></pre>
+<p>关键设计概念：<strong><code>is_generated</code> vs <code>is_literal</code></strong>。Verdi 编译 RTL 时把表达式拆成一堆合成网，TraceWeave 用这属性区分——<strong>真实声明的 net 是「观察边界」（停在这里），合成的 net 要展开</strong>。</p>
+<h4>有界查询与 LSF</h4>
+<p>NPI 查询有三个硬限制（<code>_MAX_STATES=256</code>/<code>_MAX_DEPTH=32</code>/<code>_MAX_PINS=64</code>），原则是<strong>「never a recursive fan-in cone」</strong>——顺着一个信号递归展开扇入锥在大 SoC 里会爆炸成几百万个网，所以只做有界单步，超了返回「不完整」标记（<code>ProjectionGap</code>）。</p>
+<p>还有个环境架构点：NPI 查询要消耗 Verdi license，而 license 在 LSF 计算节点上、MCP server 跑在登录节点，所以 TraceWeave 用独立 worker 进程（<code>npi_worker.py</code>）通过文件传请求，xverif 用 <code>XVERIF_MCP_BACKEND=lsf</code> 通过 <code>bsub -I</code> 送进集群。</p>
+<h3 id="underlying-c5">6.5 各项目特色算法</h3>
+<h4>TraceWeave：三级降级 = 准确度 vs 依赖的梯度取舍</h4>
+<p>几个设计细节值得注意：</p>
+<ul>
+<li><strong>没 KDB 就绝不启动 NPI</strong>——源码注释原话 <code>starting NPI without a design to load would just consume a license</code>（白烧 license），所以先 <code>probe_verdi_backend</code> 探测。</li>
+<li><strong><code>DeferredConnectivityFallbackBackend</code> 占位符</strong>修了一个顺序 bug：让 Source Graph 在 NPI 失败后<strong>先于</strong> Static 获得 fallback 机会，降级顺序严格是 NPI → Source Graph → Static。</li>
+<li><strong>Static 后端的能力边界诚实标注</strong>：<code>find_path</code> 直接返回 <code>static_backend_no_path_api</code>——源码正则做不了路径追踪，不硬编假结果。</li>
+</ul>
+<h4>xverif：SVA→IR 是一个迷你编译器前端</h4>
+<p><code>xsva/</code> 目录暴露了一条完整编译管线：</p>
+<pre><code>frontend/  extractor.py, source.py, macros.py    <span class="cmt"># 从源码提取 SVA</span>
+ir/        expr.py, sequence.py, timeline.py     <span class="cmt"># 中间表示</span>
+lower/     sequence_to_timeline.py, path_expand  <span class="cmt"># lowering（序列→时间线）</span>
+explain/   markdown.py, text.py                  <span class="cmt"># 解释输出</span>
+lint/      rules.py, temporal.py, vacuity.py     <span class="cmt"># 含空断言(vacuity)检查</span></code></pre>
+<p>它把 SVA 时序语义编译成 IR 再确定性解释。为什么是「特色」？因为 SVA 断言（<code>|-&gt;</code>、<code>##[1:3]</code>、<code>until</code>）语义极绕，<strong>让 LLM 直接解释一定会胡编</strong>。xverif 的思路是：语义交给编译器（确定性），不交给 LLM（幻觉）。<code>lint/vacuity.py</code> 还专门查「空断言」——验证工程师最讨厌的坑。</p>
+<h4>wave-mcp：网表自愈 = 让 pyslang 在真实项目里能用</h4>
+<p><code>slang_netlist.py</code> 遍历 pyslang AST 提取驱动关系（<code>add_driver(lhs, kind, rhs, control)</code>）。而「自愈」是真正的差异化：<strong>真实芯片项目的 include 路径极复杂，pyslang 编译经常失败</strong>。wave-mcp 的做法是——编译失败 → 读诊断 → 自动补 <code>+incdir+</code>/包源 → 重编；再失败就优雅降级。这就是它能喊出「在香山、OpenTitan 上 100% 通过」的底气。</p>
+<h3 id="underlying-c6">6.6 收束：确定性 vs LLM 推理</h3>
+<div class="callout green">
+<div class="title">四块底层收束成同一个思想</div>
+<p class="lead" style="margin:0"><strong>AI 调试工具要可靠，必须把「确定性计算」和「LLM 推理」严格分开</strong>——编译、读值、算驱动这些「算出来的」绝不交给 AI 猜；AI 只负责在确定的事实之上做推理和表达。</p>
+</div>
+<ul>
+<li><strong>wave-mcp</strong> 的<strong>网表自愈 + 一致性校验</strong>：编译、读值这些确定性动作自己扛；</li>
+<li><strong>TraceWeave</strong> 的<strong>置信度分级</strong>（<code>EXACT_SOURCE</code>/<code>CONDITIONAL</code>/<code>PARTIAL</code>）：明确标注每个结论多可信；</li>
+<li><strong>xverif</strong> 的<strong>确定性 XOUT + SVA 编译器</strong>：每个回答带 evidence，语义靠编译不靠 LLM。</li>
+</ul>
+<p>它们共同在防一件事：<strong>LLM 在 debug 时胡编根因</strong>。也因此，这些工具的价值不在于「把单个 case 的调试体验做得比 Verdi 好」，而在于「把确定的事实可靠地喂给 AI，让它做并行、批量、跨工具的推理」。</p>
+</section><section class="card" id="compare">
+<h2><span class="no">7</span>对比与选型</h2>
+<p class="ref">把四个工具放在一起看，各适合什么场景</p>
+<h3 id="compare-c1">7.1 全面对比表</h3>
+<table>
+<tr><th>维度</th><th>wave-mcp</th><th>TraceWeave</th><th>xverif</th><th>fsdb-mcp</th></tr>
+<tr><td>出品方</td><td>腾讯蓬莱实验室</td><td>gokeshenzhen</td><td>BLANK2077</td><td>hjxxlogic（社区）</td></tr>
+<tr><td>License</td><td><strong>Apache-2.0 免 License</strong></td><td>MIT（NPI/FSDB 需 Verdi）</td><td>MIT（需 Synopsys license）</td><td>依赖 Verdi license</td></tr>
+<tr><td>波形格式</td><td>FST 直读；VCD/FSDB 自动转</td><td>VCD/FSDB 直读</td><td>FSDB（NPI）</td><td>仅 FSDB</td></tr>
+<tr><td>技术栈</td><td>pylibfst + pyslang</td><td>三级降级（NPI→pyslang→正则）</td><td>C++ 直链 NPI</td><td>pynpi</td></tr>
+<tr><td>工具数量</td><td><strong>37</strong>（12 大类）</td><td>38</td><td>10 子工具</td><td>10</td></tr>
+<tr><td>追 X 态根因</td><td><strong>有</strong>（trace_x）</td><td>部分（停在时序边界）</td><td>经 NPI driver 查询</td><td>无</td></tr>
+<tr><td>pass/fail 对比</td><td><strong>有</strong>（diff_waveforms）</td><td>有（divergence）</td><td>无</td><td>无</td></tr>
+<tr><td>覆盖率 / SVA</td><td>无</td><td>无</td><td><strong>有</strong>（xcov / xsva）</td><td>无</td></tr>
+<tr><td>活会话（force/断点）</td><td>无</td><td>无</td><td><strong>有</strong>（xsimdebug）</td><td>无</td></tr>
+<tr><td>静态分析（仿真前）</td><td><strong>有</strong>（open_static_session）</td><td>有（scan_structural_risks）</td><td>无</td><td>无</td></tr>
+<tr><td>环境门槛</td><td>Python 3.10–3.13 + glibc ≥ 2.28</td><td>Python 3.11+（pyslang 可选）</td><td>GCC 5.0+ 编译 + Verdi + license</td><td>Python 3.10+ + Verdi + license</td></tr>
+<tr><td>CentOS 7 落地</td><td>需 glibc 2.17 档 bundle</td><td>走 NPI 绕开 pyslang 可行</td><td>最可行（不吃 glibc 坑）</td><td>可行（无 C 扩展依赖）</td></tr>
+</table>
+<h3 id="compare-c2">7.2 什么时候选哪个</h3>
+<ul>
+<li><strong>优先 wave-mcp</strong>：开源路线、能力全、免 License，带 <code>trace_x</code> 和 <code>diff_waveforms</code> 这种自动化 debug 硬能力。除非环境受限（CentOS 7 无 bundle）或要 fsdb 精确读取。</li>
+<li><strong>选 TraceWeave</strong>：你想要「从失败 log 一路追到根因」的端到端链路，而不是只盯波形；尤其是有/无 Verdi license 都要能跑的场景。</li>
+<li><strong>选 xverif</strong>：你要覆盖率和活会话（force/断点/单步），且能接受编译 C++ 和 license 门槛。它的确定性哲学适合对「AI 别胡编」要求高的场景。</li>
+<li><strong>选 fsdb-mcp</strong>：只是想在已有 Verdi 环境里轻量读一下 FSDB 值，不想折腾 FST 转换或网表。但它只有基础读链路，<strong>和上面三个主力不是一个量级</strong>。</li>
+</ul>
+<h3 id="compare-c3">7.3 结论</h3>
 <div class="callout green">
 <div class="title">一句话结论</div>
-<p class="lead" style="margin:0">想认真让 AI 帮你 debug——追 X 态、找驱动、对比 pass/fail——选 <strong>wave-mcp</strong>，开源免 License 且能力碾压；只想在已有 Verdi 环境里轻量读一下 FSDB 波形，选 <strong>fsdb-mcp</strong>，简单直接。作为验证工程师，wave-mcp 的 <code>trace_x</code> 和 <code>diff_waveforms</code> 是传统手动 debug 很难自动化的两块，最值得先试。</p>
+<p class="lead" style="margin:0">想认真让 AI 帮你 debug——追 X 态、找驱动、比波形——首选 <strong>wave-mcp</strong>（开源免 License、能力全）；要「log→根因」的端到端链路选 <strong>TraceWeave</strong>；要覆盖率和活会话选 <strong>xverif</strong>。fsdb-mcp 只是最低配的「读 FSDB 值」方案，作为轻量补充即可，别把它和三个主力等量齐观。</p>
 </div>
 </section></main><script>
 (function () {

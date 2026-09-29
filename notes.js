@@ -37,11 +37,11 @@ const NOTES = [
     desc: "Linux 内核 RISC-V IOMMU 驱动源码逐模块拆解"
   },
   {
-    title: "波形 Debug 工具 · wave-mcp 与 fsdb-mcp 使用指南",
+    title: "RTL 调试 MCP 工具全景 · wave-mcp / TraceWeave / xverif 与底层原理",
     date: "2026-09-28",
     category: "AI Tools",
     url: "notes/2026-09-28-波形debug工具-使用指南.html",
-    desc: "wave-mcp 与 fsdb-mcp 两个波形调试 MCP 工具的使用方法与选型"
+    desc: "四个 RTL 调试 MCP 工具（wave-mcp / TraceWeave / xverif / fsdb-mcp）的对比，以及波形格式、信号追踪、Verdi NPI 等底层原理"
   },
   {
     title: "Claude Skill 与 skill-seekers · 把资料自动变成 Skill",
