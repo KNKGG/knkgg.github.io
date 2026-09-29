@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>svcode-skill-seekers 与 skill-seekers · 对比与 SV/UVM 识别原理</title><style>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>skill-seekers 家族 · 三方定位与 SystemVerilog/UVM 识别原理</title><style>
 :root {
   --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
   --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
@@ -229,67 +229,95 @@ li { margin: 0.3rem 0; }
 
 ::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
 </style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul>
-<li><a class="lvl1" href="#why">1. 为什么需要 svcode-skill-seekers</a><ul></ul></li>
-<li><a class="lvl1" href="#diff">2. 一张表看懂两者差异</a><ul></ul></li>
-<li><a class="lvl1" href="#arch">3. 架构：5 个模块各司其职</a><ul>
-<li><a class="lvl2" href="#arch-c1">3.1 模块职责一览</a><ul></ul></li>
+<li><a class="lvl1" href="#why">1. 为什么会有三个「skill-seekers」</a><ul></ul></li>
+<li><a class="lvl1" href="#diff">2. 一张表看懂三方差异</a><ul></ul></li>
+<li><a class="lvl1" href="#simple">3. simple-skill-seekers：把「AI 增强」抽掉</a><ul></ul></li>
+<li><a class="lvl1" href="#arch">4. 架构：5 个模块各司其职</a><ul>
+<li><a class="lvl2" href="#arch-c1">4.1 模块职责一览</a><ul></ul></li>
 </ul></li>
-<li><a class="lvl1" href="#sv">4. 接入 SystemVerilog：tree-sitter 真实 AST</a><ul>
-<li><a class="lvl2" href="#sv-c1">4.1 为什么不用正则</a><ul></ul></li>
-<li><a class="lvl2" href="#sv-c2">4.2 三行接入 grammar</a><ul></ul></li>
-<li><a class="lvl2" href="#sv-c3">4.3 识别 class / extends / 方法</a><ul></ul></li>
-<li><a class="lvl2" href="#sv-c4">4.4 doc 注释怎么挂对位置</a><ul></ul></li>
+<li><a class="lvl1" href="#sv">5. 接入 SystemVerilog：tree-sitter 真实 AST</a><ul>
+<li><a class="lvl2" href="#sv-c1">5.1 为什么不用正则</a><ul></ul></li>
+<li><a class="lvl2" href="#sv-c2">5.2 三行接入 grammar</a><ul></ul></li>
+<li><a class="lvl2" href="#sv-c3">5.3 识别 class / extends / 方法</a><ul></ul></li>
+<li><a class="lvl2" href="#sv-c4">5.4 doc 注释怎么挂对位置</a><ul></ul></li>
 </ul></li>
-<li><a class="lvl1" href="#uvm">5. 识别 UVM：本质是 class + extends</a><ul></ul></li>
-<li><a class="lvl1" href="#seam">6. 与 skill-seekers 的「缝合」</a><ul>
-<li><a class="lvl2" href="#seam-c1">6.1 输出 shape 对齐</a><ul></ul></li>
-<li><a class="lvl2" href="#seam-c2">6.2 拷贝复用 APIReferenceBuilder</a><ul></ul></li>
+<li><a class="lvl1" href="#uvm">6. 识别 UVM：本质是 class + extends</a><ul></ul></li>
+<li><a class="lvl1" href="#seam">7. 与 skill-seekers 的「缝合」</a><ul>
+<li><a class="lvl2" href="#seam-c1">7.1 输出 shape 对齐</a><ul></ul></li>
+<li><a class="lvl2" href="#seam-c2">7.2 拷贝复用 APIReferenceBuilder</a><ul></ul></li>
 </ul></li>
-<li><a class="lvl1" href="#practice">7. 实战与诚实的边界</a><ul>
-<li><a class="lvl2" href="#practice-c1">7.1 给 axi_vip 生成方法级 API</a><ul></ul></li>
-<li><a class="lvl2" href="#practice-c2">7.2 补上方法签名提取</a><ul></ul></li>
+<li><a class="lvl1" href="#practice">8. 实战与诚实的边界</a><ul>
+<li><a class="lvl2" href="#practice-c1">8.1 给 axi_vip 生成方法级 API</a><ul></ul></li>
+<li><a class="lvl2" href="#practice-c2">8.2 补上方法签名提取</a><ul></ul></li>
 </ul></li>
 </ul></nav></aside><main class="content"><header class="hero">
-<h1>svcode-skill-seekers 与 skill-seekers：对比 + SystemVerilog/UVM 识别原理</h1>
-<div class="sub">给 skill-seekers 补上 SystemVerilog / UVM 这块拼图——讲清两者差异，以及 tree-sitter 是怎么「读懂」class、extends 和 uvm_component 的</div>
+<h1>skill-seekers 家族：三方定位 + SystemVerilog/UVM 识别原理</h1>
+<div class="sub">同一个名字底下的三个工具——全功能旗舰 skill-seekers、精简 fork simple-skill-seekers、自建 SV/UVM 补丁 svcode-skill-seekers；以及 tree-sitter 是怎么「读懂」class、extends 和 uvm_component 的</div>
 <div class="meta">
-  来源：<code>svcode-skill-seekers v0.1.0</code>（自建，源码在 <code>~/svcode-skill-seekers/</code>）·
-  <code>skill-seekers v3.9.1</code>（pip 包）·
+  来源：<code>skill-seekers v3.9.1</code>（pip 包）·
+  <code>simple-skill-seekers v0.1.0</code>（无 AI 增强 fork）·
+  <code>svcode-skill-seekers v0.1.0</code>（自建，源码在 <code>~/svcode-skill-seekers/</code>）·
   解析器 <code>tree-sitter-systemverilog</code> ·
   信息截至 2026-09
 </div>
 </header><section class="card" id="why">
-<h2><span class="no">1</span>为什么需要 svcode-skill-seekers <span class="tag blue">动机</span></h2>
-<p class="ref">一个很具体的空白：skill-seekers 支持 C/C++、Python、JS/TS，但就是不认 SystemVerilog</p>
+<h2><span class="no">1</span>为什么会有三个「skill-seekers」<span class="tag blue">动机</span></h2>
+<p class="ref">同一个名字底下，其实是三条不同的路：全功能、做减法、补语言</p>
+<p class="lead"><strong>skill-seekers 是把「现成资料」自动变成 Claude Skill 的工具</strong>：给它 PDF、文档网站、GitHub 仓库或本地代码，它提取内容、生成 <code>SKILL.md</code> + 结构化参考文件，还能 AI 增强、一键装到 <code>~/.claude/skills/</code>。它追求的是「覆盖一切资料源 + 一切 AI 平台」。</p>
+<p>在这条主线上，另外两个工具从不同方向切了出去：</p>
+<ul>
+<li><strong>simple-skill-seekers</strong>：从 skill-seekers fork 出来，砍掉 AI 增强，只留「把资料变成 skill」的确定性核心——方向是「做减法」。</li>
+<li><strong>svcode-skill-seekers</strong>：完全自建，只解决一件事——skill-seekers 原生不认 <strong>SystemVerilog / UVM</strong>，它用 tree-sitter 补上这块语言空白——方向是「做加法」。</li>
+</ul>
 <div class="callout amber">
 <div class="title">先澄清一个常见误解</div>
-<p class="lead" style="margin:0">svcode-skill-seekers <strong>不是</strong> skill-seekers 的「加强版 / 完整版 + SV 支持」。它只做一件事——把 SV/UVM 源码解析成 Skill，只有 <code>create</code>、<code>install</code>、<code>update</code> 三个命令，从 skill-seekers 那里复用了渲染和安装两个模块。两者是「各管一段」，不是包含关系。</p>
+<p class="lead" style="margin:0">svcode-skill-seekers <strong>不是</strong> skill-seekers 的「加强版 / 完整版 + SV 支持」。它只做一件事——把 SV/UVM 源码解析成 Skill，只有 <code>create</code>、<code>install</code>、<code>update</code> 三个命令，从 skill-seekers 那里复用了渲染和安装两个模块。三者是「各管一段」，不是包含关系。</p>
 </div>
-<p class="lead"><strong>skill-seekers 是把「现成资料」自动变成 Claude Skill 的工具</strong>：给它 PDF、文档网站、GitHub 仓库或本地代码，它提取内容、生成 <code>SKILL.md</code> + 结构化参考文件，还能 AI 增强、一键装到 <code>~/.claude/skills/</code>。</p>
-<p>但它对「本地代码」的语言支持有个天花板——原生覆盖的是 <strong>C/C++、Python、JavaScript/TypeScript</strong> 这类通用语言。而芯片验证领域的主战场 <strong>SystemVerilog / UVM</strong>，它不认。</p>
-<p>于是就有了一小块拼图要补：给一个目录里的 SV/UVM 源码，自动解析出「有哪些 class、谁继承谁、每个方法干嘛的」，生成和 skill-seekers 同款结构的 Skill。</p>
 <div class="analogy">
 <div class="lbl">一句话定位</div>
-<p style="margin:6px 0 0"><strong>skill-seekers</strong>：全能选手，多源（PDF/网站/仓库/代码）+ 多语言 + 20 多个命令。</p>
-<p style="margin:6px 0 0"><strong>svcode-skill-seekers</strong>：专精一件小事——只吃 SV/UVM 源码，吐出同款 Skill，只有 <code>create</code>、<code>install</code>、<code>update</code> 三个命令。</p>
+<p style="margin:6px 0 0"><strong>skill-seekers</strong>：全能选手，多源（18 种）+ 多语言 + 20 多个命令 + AI 增强。</p>
+<p style="margin:6px 0 0"><strong>simple-skill-seekers</strong>：做减法的精简 fork——去 AI、去外围，只留 6 种源的确定性转换。</p>
+<p style="margin:6px 0 0"><strong>svcode-skill-seekers</strong>：专精一件小事——只吃 SV/UVM 源码，吐出同款 Skill，只有三个命令。</p>
 </div>
 </section><section class="card" id="diff">
-<h2><span class="no">2</span>一张表看懂两者差异 <span class="tag green">对比</span></h2>
+<h2><span class="no">2</span>一张表看懂三方差异 <span class="tag green">对比</span></h2>
 <p class="ref">不是「谁替代谁」，而是「各管一段」</p>
 <table>
-<tr><th>维度</th><th>skill-seekers</th><th>svcode-skill-seekers</th></tr>
-<tr><td>定位</td><td>通用资料 → Skill</td><td>SV/UVM 源码 → Skill</td></tr>
-<tr><td>输入源</td><td>PDF / 网站 / GitHub 仓库 / 本地代码</td><td>仅本地 SV 源码目录</td></tr>
-<tr><td>语言</td><td>C/C++、Python、JS/TS 等</td><td><strong>SystemVerilog / UVM</strong></td></tr>
-<tr><td>解析方式</td><td>多源适配（爬取/解析/转换）</td><td>tree-sitter-systemverilog <strong>真实 AST</strong></td></tr>
-<tr><td>命令数</td><td>20+（create/enhance/install-agent/package/config/doctor）</td><td>3（<code>create</code> / <code>install</code> / <code>update</code>）</td></tr>
-<tr><td>AI 增强</td><td><code>enhance</code></td><td>无（纯本地确定性解析）</td></tr>
-<tr><td>依赖</td><td>较多（含 AI SDK、爬虫等）</td><td><strong>仅 2 个</strong>：tree-sitter + tree-sitter-systemverilog</td></tr>
-<tr><td>安装</td><td><code>pip install skill-seekers</code></td><td><code>pip install -e .</code>（自建）</td></tr>
+<tr><th>维度</th><th>skill-seekers</th><th>simple-skill-seekers</th><th>svcode-skill-seekers</th></tr>
+<tr><td>定位</td><td>通用资料 → Skill（全功能旗舰）</td><td>无 AI 增强的精简 fork</td><td>SV/UVM 源码 → Skill（单点补丁）</td></tr>
+<tr><td>输入源</td><td>18 种（PDF/网站/GitHub/代码/Word/EPUB/视频…）</td><td>6 种（C/Python 代码、PDF、HTML、Word、PPTX）</td><td>仅本地 SV 源码目录</td></tr>
+<tr><td>语言</td><td>C/C++、Python、JS/TS 等</td><td>C、Python（代码侧）</td><td><strong>SystemVerilog / UVM</strong></td></tr>
+<tr><td>解析方式</td><td>多源适配（爬取/解析/转换）</td><td>多源适配（同原版）</td><td>tree-sitter-systemverilog <strong>真实 AST</strong></td></tr>
+<tr><td>命令数</td><td>20+（create/scan/package/enhance/doctor…）</td><td>3（<code>create</code> / <code>detect</code> / <code>doctor</code>）</td><td>3（<code>create</code> / <code>install</code> / <code>update</code>）</td></tr>
+<tr><td>AI 增强</td><td><code>enhance</code>（anthropic/langchain/llama-index）</td><td>无</td><td>无（纯本地确定性解析）</td></tr>
+<tr><td>依赖</td><td>22 核心 + 大量可选</td><td>18 个</td><td><strong>仅 2 个</strong>：tree-sitter + tree-sitter-systemverilog</td></tr>
+<tr><td>安装</td><td><code>pip install skill-seekers</code></td><td><code>pip install simple-skill-seekers</code></td><td><code>pip install -e .</code>（自建）</td></tr>
 </table>
-<p>最本质的区别：skill-seekers 是「广度优先」的多源通用工具；svcode-skill-seekers 是「深度优先」的单点补丁——把 SV/UVM 这一个空白的语言，用最少的依赖、最真实的语法解析补上。</p>
+<p>最本质的区别：skill-seekers 是「广度优先」的多源通用工具；simple-skill-seekers 是「广度裁剪」——去掉 AI 和外围，只留确定性转换这条主线；svcode-skill-seekers 是「深度优先」的单点补丁——用最少的依赖、最真实的语法解析，补上 skill-seekers 不认 SystemVerilog 这块空白。</p>
+</section><section class="card" id="simple">
+<h2><span class="no">3</span>simple-skill-seekers：把「AI 增强」抽掉 <span class="tag amber">理念</span></h2>
+<p class="ref">做减法——证明「把资料变成 skill」这件事，AI 不是必需品</p>
+<p class="lead">simple-skill-seekers 是 skill-seekers 的一个 fork，理念只有一条：<strong>「把资料变成 skill」这件事，AI 增强是可选件，不是必需品。</strong></p>
+<p>原版 skill-seekers 的完整形态，可以拆成三块：</p>
+<ol>
+<li><strong>确定性转换主线</strong>——提取 → 结构化 → 渲染成 <code>SKILL.md</code> + 参考文件；</li>
+<li><strong>AI 增强副线</strong>——<code>enhance</code>、<code>scan</code> 等命令，依赖 anthropic / langchain / llama-index；</li>
+<li><strong>外围子系统</strong>——多平台打包/上传、MCP、同步、embedding 等。</li>
+</ol>
+<p>但如果你只需要第一块——把一个 PDF、一个 HTML 页面、或一个代码库变成结构化的 skill——这整条主线是<strong>纯文本处理</strong>，不调用任何 LLM 也能完成。所以 simple-skill-seekers 做的事是「减法」：</p>
+<ul>
+<li>砍掉 AI 增强整条线，以及多平台打包/上传等外围；</li>
+<li>只留 6 种源：C/Python 代码、PDF、HTML、Word、PPTX；</li>
+<li>命令瘦身到 <code>create</code> / <code>detect</code> / <code>doctor</code> 三个；</li>
+<li>核心依赖从 22 个降到 18 个。</li>
+</ul>
+<p>换来的是：更轻、依赖更少、行为完全确定（同样的输入永远同样的输出）、不依赖任何外部服务。它的存在回答了这样一个问题——<strong>如果你根本用不上 AI 增强，为什么还要为它背上几十个依赖？</strong></p>
+<div class="analogy">
+<div class="lbl">三个工具的关系</div>
+<p style="margin:6px 0 0">如果 skill-seekers 是「全能旗舰」，simple-skill-seekers 就是「精简版」（砍掉你不用的），svcode-skill-seekers 则是「外挂补丁」（补上它没有的）。三者不是竞争关系，而是同一个问题——「怎么把资料变成 skill」——的三个不同答案。</p>
+</div>
 </section><section class="card" id="arch">
-<h2><span class="no">3</span>架构：5 个模块各司其职 <span class="tag purple">架构</span></h2>
+<h2><span class="no">4</span>架构：5 个模块各司其职 <span class="tag purple">架构</span></h2>
 <p class="ref">数据流从上到下，最后落到 skill-seekers 兼容的产物结构</p>
 <div class="vflow">
 <div class="layer m1"><div class="name">SV/UVM 源码目录</div><div class="desc"><code>.sv / .svh / .svp / .svi</code></div></div>
@@ -302,7 +330,7 @@ li { margin: 0.3rem 0; }
 <div class="link"></div>
 <div class="layer"><div class="name">cli.py</div><div class="desc"><code>create &lt;dir&gt;</code> 串起全流程 · <code>update &lt;dir&gt;</code> 增量刷新 · <code>install &lt;skill_dir&gt;</code> 装到各 AI agent</div></div>
 </div>
-<h3 id="arch-c1">3.1 模块职责一览</h3>
+<h3 id="arch-c1">4.1 模块职责一览</h3>
 <table>
 <tr><th>模块</th><th>行数</th><th>职责</th></tr>
 <tr><td><code>systemverilog.py</code></td><td>301</td><td><strong>核心</strong>：用 tree-sitter 解析 SV，提取 class（含 extends）、方法、方法签名（参数/返回类型）、doc 注释</td></tr>
@@ -312,21 +340,21 @@ li { margin: 0.3rem 0; }
 <tr><td><code>cli.py</code></td><td>239</td><td>命令行入口，分发 <code>create</code> / <code>update</code> / <code>install</code> 三个子命令</td></tr>
 <tr><td><code>install_agent.py</code></td><td>331</td><td><strong>拷贝自 skill-seekers（MIT）</strong>，把生成的 skill 目录拷贝到各 AI agent 的 skills 目录</td></tr>
 </table>
-<p>注意 <code>api_reference.py</code> 和 <code>install_agent.py</code> 的特殊身份——它们都是从 skill-seekers 原样拷贝过来的（MIT，文件头保留版权声明），这样下游「渲染 markdown」和「安装到 agent」这两步就能直接复用，不用自己重写（详见第 6 节）。</p>
+<p>注意 <code>api_reference.py</code> 和 <code>install_agent.py</code> 的特殊身份——它们都是从 skill-seekers 原样拷贝过来的（MIT，文件头保留版权声明），这样下游「渲染 markdown」和「安装到 agent」这两步就能直接复用，不用自己重写（详见第 7 节）。</p>
 </section><section class="card" id="sv">
-<h2><span class="no">4</span>接入 SystemVerilog：tree-sitter 真实 AST <span class="tag blue">核心</span></h2>
+<h2><span class="no">5</span>接入 SystemVerilog：tree-sitter 真实 AST <span class="tag blue">核心</span></h2>
 <p class="ref">整个工具的命门在 systemverilog.py 的前 20 行</p>
-<h3 id="sv-c1">4.1 为什么不用正则</h3>
+<h3 id="sv-c1">5.1 为什么不用正则</h3>
 <p>解析「哪些是 class、谁继承谁、方法归属哪个类」，最容易想到的是正则 + 括号匹配。但 SV 语法太灵活——<code>virtual function</code>、<code>extern</code> 声明、<code>pure virtual</code>、宏包裹、注释里的假代码……正则很快会漏匹配或误匹配，而且维护不下去。</p>
 <p>正确姿势是交给一个真正的语法解析器。这里选的是 <strong>tree-sitter</strong>：一个增量解析框架，配上一份 SV 的 grammar（<code>tree-sitter-systemverilog</code>），就能把源码变成一棵 <strong>语法树（AST）</strong>——每个 <code>class</code>、<code>function</code>、<code>extends</code> 都是树上一个有类型的节点，而不是一段要靠正则猜的文本。</p>
-<h3 id="sv-c2">4.2 三行接入 grammar</h3>
+<h3 id="sv-c2">5.2 三行接入 grammar</h3>
 <p>接入 tree-sitter-systemverilog 只用了三行：</p>
 <pre><code><span class="kw">import</span> tree_sitter_systemverilog <span class="kw">as</span> tssv
 <span class="kw">from</span> tree_sitter <span class="kw">import</span> Language, Parser
 
 _PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 grammar，构建解析器</span></code></pre>
 <p><code>tssv.language()</code> 返回 tree-sitter 的 <code>Language</code> 对象（SV 语法规则），塞进 <code>Parser</code> 就得到一个能解析 SV 源码的解析器。之后对任意 SV 文本调 <code>_PARSER.parse(source).root_node</code>，就得到整棵语法树的根节点，再递归遍历即可。</p>
-<h3 id="sv-c3">4.3 识别 class / extends / 方法</h3>
+<h3 id="sv-c3">5.3 识别 class / extends / 方法</h3>
 <p>核心是一个递归 <code>walk</code>：从根节点往下，遇到特定 <strong>节点类型</strong> 就做对应提取。关键是这张类型清单——它把「SV 里什么算方法」写全了：</p>
 <pre><code>_METHOD_TYPES = (
     <span class="str">"function_declaration"</span>,   <span class="cmt"># function 实现</span>
@@ -352,7 +380,7 @@ _PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 
 <div class="lbl">为什么用节点类型而不是文本匹配</div>
 <p style="margin:6px 0 0">正则看到的是「一串字符」，tree-sitter 看到的是「一个 class_declaration 节点，下面挂着一个 class_type 子节点」。后者天生带着语法结构，<code>extends</code> 关系、方法归属、注释位置都变成了树的父子关系，提取只是「按类型找子节点」，不用猜。</p>
 </div>
-<h3 id="sv-c4">4.4 doc 注释怎么挂对位置</h3>
+<h3 id="sv-c4">5.4 doc 注释怎么挂对位置</h3>
 <p>方法/类的 docstring 来自源码里 <code>/** ... */</code> 形式的注释。难点是「怎么确定这个注释属于下面哪个声明」——尤其 SV 里注释和声明之间可能隔着 <code>extern</code>、<code>virtual</code>、<code>static</code> 这些修饰符。</p>
 <p>做法：先扫出所有 <code>/** ... */</code> 注释（记录结束位置），对每个声明找「结束位置最靠近、且中间只隔修饰符/空白」的那条注释。中间的修饰符白名单长这样：</p>
 <pre><code>_MODIFIERS_RE = re.compile(
@@ -360,7 +388,7 @@ _PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 
 )</code></pre>
 <p>这样 <code>/** doc */ virtual function f();</code> 里的注释也能正确挂到 <code>f</code> 上，而不是因为中间有个 <code>virtual</code> 就丢了。</p>
 </section><section class="card" id="uvm">
-<h2><span class="no">5</span>识别 UVM：本质是 class + extends <span class="tag amber">核心</span></h2>
+<h2><span class="no">6</span>识别 UVM：本质是 class + extends <span class="tag amber">核心</span></h2>
 <p class="ref">UVM 没有单独的 grammar，因为它本来就是 SV</p>
 <p class="lead">这是最容易误解的一点：<strong>svcode-skill-seekers 并没有「UVM 解析器」</strong>。UVM 里的 <code>uvm_object</code>、<code>uvm_component</code>、<code>uvm_sequence</code>、<code>uvm_driver</code>、<code>uvm_monitor</code>……统统都是 SystemVerilog 的 <code>class</code>。</p>
 <p>验证工程师写的 UVM 代码，本质就是「定义一堆 class，并用 <code>extends</code> 表达它们之间的继承关系」：</p>
@@ -385,9 +413,9 @@ _PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 
 <p class="lead" style="margin:0">UVM 不是一种新语言，是 SV 之上的一套库 + 约定。所以一份 SV 的 grammar 就同时覆盖了「普通 SV」和「UVM」，svcode-skill-seekers 才能用最小的改动补上这个空白。</p>
 </div>
 </section><section class="card" id="seam">
-<h2><span class="no">6</span>与 skill-seekers 的「缝合」 <span class="tag green">设计</span></h2>
+<h2><span class="no">7</span>与 skill-seekers 的「缝合」 <span class="tag green">设计</span></h2>
 <p class="ref">两条线对齐，让下游能复用，而不是另起炉灶</p>
-<h3 id="seam-c1">6.1 输出 shape 对齐</h3>
+<h3 id="seam-c1">7.1 输出 shape 对齐</h3>
 <p>skill-seekers 分析 C/C++ 后产出的结构是 <code>{"classes": [...], "functions": [...], "comments": [...]}</code>。svcode-skill-seekers 的 <code>systemverilog.py</code> 也输出<strong>一模一样的 shape</strong>：</p>
 <pre><code>{
   <span class="str">"classes"</span>: [
@@ -397,7 +425,7 @@ _PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 
   <span class="str">"comments"</span>: [...]
 }</code></pre>
 <p>这个对齐是刻意的：只要解析结果长一个样，后面「渲染成 markdown、打包成 skill」的下游工具就不用改一行，直接消费。</p>
-<h3 id="seam-c2">6.2 拷贝复用 APIReferenceBuilder</h3>
+<h3 id="seam-c2">7.2 拷贝复用 APIReferenceBuilder</h3>
 <p>下游那一段（把 classes/functions 渲染成 <code>references/api_reference/*.md</code>）干脆直接<strong>从 skill-seekers 原样拷贝</strong>了 <code>APIReferenceBuilder</code>（MIT 协议，文件头保留了版权声明）。</p>
 <p>这样做的取舍很清晰：</p>
 <ul>
@@ -405,10 +433,11 @@ _PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 
 <li><strong>独立</strong>：拷贝而非 <code>import skill_seekers</code>，保证 svcode-skill-seekers 零 skill-seekers 运行时依赖，装起来只要 tree-sitter 两个包。</li>
 </ul>
 <p>所以准确说，svcode-skill-seekers 的「原创」只有 <code>systemverilog.py</code>（SV AST 解析）和 <code>scraper.py</code>（遍历过滤），其余是「复用 skill-seekers 的两个下游模块（渲染 + 安装）+ 一个薄薄的 <code>cli.py</code>」。这是一次典型的「缝合」而非「重造」。</p>
+<p>有意思的是，simple-skill-seekers 也是「从 skill-seekers 出发」——但它走的是另一条路：直接 fork 整棵代码树，<strong>保留整条转换主线、砍掉 AI 和外围</strong>（删），而不是像 svcode 这样「只挑两个下游模块来复用」（取）。删和取，殊途同归，都证明了 skill-seekers 是「可拆分」的——它的核心转换能力和它的 AI 增强、多平台能力，本来就是解耦的两层。</p>
 </section><section class="card" id="practice">
-<h2><span class="no">7</span>实战与诚实的边界 <span class="tag red">落地</span></h2>
+<h2><span class="no">8</span>实战与诚实的边界 <span class="tag red">落地</span></h2>
 <p class="ref">跑通了一个真实目录，补上了方法签名和增量更新</p>
-<h3 id="practice-c1">7.1 给 axi_vip 生成方法级 API</h3>
+<h3 id="practice-c1">8.1 给 axi_vip 生成方法级 API</h3>
 <p>拿某个 AMBA 验证 IP（VIP）的 AXI 部分跑了一遍，用过滤参数只抓 <code>axi_</code> 前缀、去掉 <code>com/mti/ncv</code> 仿真器变体和 <code>.ovm./.vmm.</code> 方法学变体：</p>
 <pre><code>svcode-skill-seekers create &lt;某 AMBA VIP 目录&gt; \
   --filter axi_ \
@@ -418,7 +447,7 @@ _PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 
 <p>生成完 skill，还能用 <code>install</code> 命令一键装到各 AI coding agent 的 skills 目录：</p>
 <pre><code>svcode-skill-seekers install output --agent claude        <span class="cmt"># 拷到 ~/.claude/skills/</span>
 svcode-skill-seekers install output --agent all --dry-run  <span class="cmt"># 预览装到全部 agent</span></code></pre>
-<h3 id="practice-c2">7.2 补上方法签名：return_type + parameters</h3>
+<h3 id="practice-c2">8.2 补上方法签名：return_type + parameters</h3>
 <p>初版只提取「类 + 继承 + 方法名 + docstring + 行号」，方法 dict 里的 <code>parameters</code> 和 <code>return_type</code> 是空占位。后来补上了这两个字段——同样从 tree-sitter 的 AST 里取，没引入任何新依赖：</p>
 <pre><code><span class="kw">def</span> _return_type(node, source):
     <span class="cmt"># 沿 function/task_body_declaration → data_type_or_void 取返回类型文本</span>
@@ -428,13 +457,13 @@ svcode-skill-seekers install output --agent all --dry-run  <span class="cmt"># �
     <span class="cmt"># 遍历 tf_port_list → tf_port_item，取参数名 + 方向/类型/维度拼成 type_hint</span>
     params.append({<span class="str">"name"</span>: name, <span class="str">"type_hint"</span>: <span class="str">"..."</span>, <span class="str">"default"</span>: <span class="kw">None</span>})</code></pre>
 <p>现在产出的方法记录带上了完整签名——<code>parameters</code>（参数名 + 类型标注）和 <code>return_type</code>（返回类型）都不再是空占位。顺带还支持了 <code>// Function:</code> / <code>// Task:</code> 这种行注释形式的 docstring，让只有行注释、没有块注释的方法也能挂上说明；注释里的签名行会被识别并跳过（避免和 AST 提取的 return_type/params 重复）。</p>
-<h3 id="practice-c3">7.3 增量更新：update 命令</h3>
+<h3 id="practice-c3">8.3 增量更新：update 命令</h3>
 <p>验证项目更新频率高时，每次 <code>create</code> 全量重析几百个文件没必要。于是加了 <code>update</code> 命令——把上次的 <code>code_analysis.json</code> 当快照，按文件<strong>内容 sha256</strong> 对比：变化/新增的文件才重新解析，已移除文件的 <code>.md</code> 删掉，未变化的直接复用：</p>
 <pre><code>svcode-skill-seekers update &lt;目录&gt; -o output   <span class="cmt"># 参数与 create 完全一致</span></code></pre>
 <p>实测（144 文件的 UVM 源码）：全量 <code>create</code> 约 1.9s，改 1 个文件的 <code>update</code> 约 0.16s，约 12 倍提速。没有历史快照时会自动回退全量。</p>
 <div class="callout amber">
 <div class="title">一句话总结</div>
-<p class="lead" style="margin:0">svcode-skill-seekers = <strong>用 tree-sitter 把 SV/UVM 源码变成真实语法树</strong>，按节点类型提取 class / extends / 方法 / doc 注释，再<strong>对齐 skill-seekers 的输出 shape</strong> 复用它的下游渲染——用最少的代码，补上 skill-seekers 不认 SystemVerilog 这块空白。</p>
+<p class="lead" style="margin:0">skill-seekers 家族的三条路——<strong>全功能</strong>（原版）、<strong>做减法</strong>（simple-skill-seekers：去 AI 留确定性转换）、<strong>补语言</strong>（svcode-skill-seekers：用 tree-sitter 把 SV/UVM 源码变成真实语法树，再对齐 skill-seekers 的输出 shape 复用下游渲染）。三者合起来，回答的是同一个问题：怎么把不同形态的资料，变成 Claude 能直接用的 skill。</p>
 </div>
 </section></main><script>
 (function () {

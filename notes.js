@@ -51,10 +51,10 @@ const NOTES = [
     desc: "Claude Skill 概念详解,以及 skill-seekers 工具把 PDF/网站/GitHub 转成 Skill 的用法"
   },
   {
-    title: "svcode-skill-seekers 与 skill-seekers · 对比与 SV/UVM 识别原理",
+    title: "skill-seekers 家族 · 三方定位与 SystemVerilog/UVM 识别原理",
     date: "2026-09-29",
     category: "AI Tools",
-    url: "notes/2026-09-29-svcode-skill-seekers-vs-skill-seekers.html",
-    desc: "对比 svcode-skill-seekers 与 skill-seekers 的差异，以及 tree-sitter 如何解析 SystemVerilog/UVM 源码"
+    url: "notes/2026-09-29-skill-seekers-三方对比.html",
+    desc: "对比 skill-seekers、simple-skill-seekers、svcode-skill-seekers 三方的定位，以及 tree-sitter 如何解析 SystemVerilog/UVM 源码"
   }
 ];
