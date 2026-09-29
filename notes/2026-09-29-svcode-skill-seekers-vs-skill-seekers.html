@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>svcode-skill-seekers 与 skill-seekers · 对比与 SV/UVM 识别原理</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+#toc .lvl3 { font-size: 0.78rem; padding-left: 2.4rem; color: var(--ink-mute); }
+
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3, h4 {
+  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
+  scroll-margin-top: 1.5rem;
+}
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+pre code .kw   { color: #1E3A8A; font-weight: 600; }
+pre code .str  { color: #C04E1A; }
+pre code .num  { color: #9a6a00; }
+pre code .type { color: #5b3fbf; }
+pre code .cmt  { color: #3f6b4f; }
+
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.7rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.92rem; color: var(--ink); font-weight: 600; line-height: 1.5; }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.25rem; line-height: 1.55; }
+.layer .desc code, .layer .name code { color: var(--accent); }
+.layer.blue   { border-color: var(--accent);   background: color-mix(in oklab, var(--accent), transparent 95%); }
+.layer.orange { border-color: var(--accent-2); background: color-mix(in oklab, var(--accent-2), transparent 95%); }
+.layer.green  { border-color: var(--green);    background: color-mix(in oklab, var(--green), transparent 94%); }
+.layer.m1 { border-color: #E6B3C2; background: #FAEDF2; }
+.layer.m2 { border-color: #E7C0AC; background: #FAF0E8; }
+.layer.m3 { border-color: #B5CFBC; background: #EFF6F1; }
+.layer.m4 { border-color: #B0C6DE; background: #EEF4F9; }
+
+.vflow { display: flex; flex-direction: column; align-items: center; }
+.vflow > .layer, .vflow > .split { width: 100%; max-width: 480px; }
+.vflow .link {
+  position: relative; width: 2px; height: 40px; flex: none;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+}
+.vflow .link::after {
+  content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent; border-right: 6px solid transparent;
+  border-top: 9px solid var(--accent-2);
+}
+
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout.red    { border-left-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul>
+<li><a class="lvl1" href="#why">1. 为什么需要 svcode-skill-seekers</a><ul></ul></li>
+<li><a class="lvl1" href="#diff">2. 一张表看懂两者差异</a><ul></ul></li>
+<li><a class="lvl1" href="#arch">3. 架构：5 个模块各司其职</a><ul>
+<li><a class="lvl2" href="#arch-c1">3.1 模块职责一览</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#sv">4. 接入 SystemVerilog：tree-sitter 真实 AST</a><ul>
+<li><a class="lvl2" href="#sv-c1">4.1 为什么不用正则</a><ul></ul></li>
+<li><a class="lvl2" href="#sv-c2">4.2 三行接入 grammar</a><ul></ul></li>
+<li><a class="lvl2" href="#sv-c3">4.3 识别 class / extends / 方法</a><ul></ul></li>
+<li><a class="lvl2" href="#sv-c4">4.4 doc 注释怎么挂对位置</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#uvm">5. 识别 UVM：本质是 class + extends</a><ul></ul></li>
+<li><a class="lvl1" href="#seam">6. 与 skill-seekers 的「缝合」</a><ul>
+<li><a class="lvl2" href="#seam-c1">6.1 输出 shape 对齐</a><ul></ul></li>
+<li><a class="lvl2" href="#seam-c2">6.2 拷贝复用 APIReferenceBuilder</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#practice">7. 实战与诚实的边界</a><ul>
+<li><a class="lvl2" href="#practice-c1">7.1 给 axi_vip 生成方法级 API</a><ul></ul></li>
+<li><a class="lvl2" href="#practice-c2">7.2 目前没做的事</a><ul></ul></li>
+</ul></li>
+</ul></nav></aside><main class="content"><header class="hero">
+<h1>svcode-skill-seekers 与 skill-seekers：对比 + SystemVerilog/UVM 识别原理</h1>
+<div class="sub">给 skill-seekers 补上 SystemVerilog / UVM 这块拼图——讲清两者差异，以及 tree-sitter 是怎么「读懂」class、extends 和 uvm_component 的</div>
+<div class="meta">
+  来源：<code>svcode-skill-seekers v0.1.0</code>（自建，源码在 <code>~/svcode-skill-seekers/</code>）·
+  <code>skill-seekers v3.9.1</code>（pip 包）·
+  解析器 <code>tree-sitter-systemverilog</code> ·
+  信息截至 2026-09
+</div>
+</header><section class="card" id="why">
+<h2><span class="no">1</span>为什么需要 svcode-skill-seekers <span class="tag blue">动机</span></h2>
+<p class="ref">一个很具体的空白：skill-seekers 支持 C/C++、Python、JS/TS，但就是不认 SystemVerilog</p>
+<div class="callout amber">
+<div class="title">先澄清一个常见误解</div>
+<p class="lead" style="margin:0">svcode-skill-seekers <strong>不是</strong> skill-seekers 的「加强版 / 完整版 + SV 支持」。它只做一件事——把 SV/UVM 源码解析成 Skill，只有 <code>create</code> 一个命令，从 skill-seekers 那里只复用了一个渲染模块。两者是「各管一段」，不是包含关系。</p>
+</div>
+<p class="lead"><strong>skill-seekers 是把「现成资料」自动变成 Claude Skill 的工具</strong>：给它 PDF、文档网站、GitHub 仓库或本地代码，它提取内容、生成 <code>SKILL.md</code> + 结构化参考文件，还能 AI 增强、一键装到 <code>~/.claude/skills/</code>。</p>
+<p>但它对「本地代码」的语言支持有个天花板——原生覆盖的是 <strong>C/C++、Python、JavaScript/TypeScript</strong> 这类通用语言。而芯片验证领域的主战场 <strong>SystemVerilog / UVM</strong>，它不认。</p>
+<p>于是就有了一小块拼图要补：给一个目录里的 SV/UVM 源码，自动解析出「有哪些 class、谁继承谁、每个方法干嘛的」，生成和 skill-seekers 同款结构的 Skill。</p>
+<div class="analogy">
+<div class="lbl">一句话定位</div>
+<p style="margin:6px 0 0"><strong>skill-seekers</strong>：全能选手，多源（PDF/网站/仓库/代码）+ 多语言 + 20 多个命令。</p>
+<p style="margin:6px 0 0"><strong>svcode-skill-seekers</strong>：专精一件小事——只吃 SV/UVM 源码，吐出同款 Skill，只有一个 <code>create</code> 命令。</p>
+</div>
+</section><section class="card" id="diff">
+<h2><span class="no">2</span>一张表看懂两者差异 <span class="tag green">对比</span></h2>
+<p class="ref">不是「谁替代谁」，而是「各管一段」</p>
+<table>
+<tr><th>维度</th><th>skill-seekers</th><th>svcode-skill-seekers</th></tr>
+<tr><td>定位</td><td>通用资料 → Skill</td><td>SV/UVM 源码 → Skill</td></tr>
+<tr><td>输入源</td><td>PDF / 网站 / GitHub 仓库 / 本地代码</td><td>仅本地 SV 源码目录</td></tr>
+<tr><td>语言</td><td>C/C++、Python、JS/TS 等</td><td><strong>SystemVerilog / UVM</strong></td></tr>
+<tr><td>解析方式</td><td>多源适配（爬取/解析/转换）</td><td>tree-sitter-systemverilog <strong>真实 AST</strong></td></tr>
+<tr><td>命令数</td><td>20+（create/enhance/install-agent/package/config/doctor）</td><td>1（<code>create</code>）</td></tr>
+<tr><td>AI 增强</td><td><code>enhance</code></td><td>无（纯本地确定性解析）</td></tr>
+<tr><td>依赖</td><td>较多（含 AI SDK、爬虫等）</td><td><strong>仅 2 个</strong>：tree-sitter + tree-sitter-systemverilog</td></tr>
+<tr><td>安装</td><td><code>pip install skill-seekers</code></td><td><code>pip install -e .</code>（自建）</td></tr>
+</table>
+<p>最本质的区别：skill-seekers 是「广度优先」的多源通用工具；svcode-skill-seekers 是「深度优先」的单点补丁——把 SV/UVM 这一个空白的语言，用最少的依赖、最真实的语法解析补上。</p>
+</section><section class="card" id="arch">
+<h2><span class="no">3</span>架构：5 个模块各司其职 <span class="tag purple">架构</span></h2>
+<p class="ref">数据流从上到下，最后落到 skill-seekers 兼容的产物结构</p>
+<div class="vflow">
+<div class="layer m1"><div class="name">SV/UVM 源码目录</div><div class="desc"><code>.sv / .svh / .svp / .svi</code></div></div>
+<div class="link"></div>
+<div class="layer m2"><div class="name">systemverilog.py</div><div class="desc">tree-sitter 真实 AST 解析 → classes / functions / comments</div></div>
+<div class="link"></div>
+<div class="layer m3"><div class="name">scraper.py</div><div class="desc">遍历目录、过滤文件 → <code>code_analysis.json</code></div></div>
+<div class="link"></div>
+<div class="layer m4"><div class="name">api_reference.py + skill_builder.py</div><div class="desc">生成 <code>references/api_reference/*.md</code> + <code>SKILL.md</code></div></div>
+<div class="link"></div>
+<div class="layer"><div class="name">cli.py</div><div class="desc"><code>svcode-skill-seekers create &lt;dir&gt;</code> 串起全流程</div></div>
+</div>
+<h3 id="arch-c1">3.1 模块职责一览</h3>
+<table>
+<tr><th>模块</th><th>行数</th><th>职责</th></tr>
+<tr><td><code>systemverilog.py</code></td><td>209</td><td><strong>核心</strong>：用 tree-sitter 解析 SV，提取 class（含 extends）、方法、doc 注释</td></tr>
+<tr><td><code>scraper.py</code></td><td>90</td><td>遍历目录，识别 SV 扩展名，做前缀/目录/文件名过滤，产出 <code>{"files": [...]}</code></td></tr>
+<tr><td><code>api_reference.py</code></td><td>375</td><td><strong>拷贝自 skill-seekers（MIT）</strong>，把分析结果渲染成 markdown API 文档</td></tr>
+<tr><td><code>skill_builder.py</code></td><td>114</td><td>拼出 <code>SKILL.md</code>（frontmatter + 统计 + 引用指引）</td></tr>
+<tr><td><code>cli.py</code></td><td>98</td><td>命令行入口，解析 <code>-o / --name / --filter / --exclude-*</code> 参数</td></tr>
+</table>
+<p>注意 <code>api_reference.py</code> 的特殊身份——它是从 skill-seekers 原样拷贝过来的，这样下游「把分析结果渲染成 markdown」这一步就能直接复用，不用自己重写（详见第 6 节）。</p>
+</section><section class="card" id="sv">
+<h2><span class="no">4</span>接入 SystemVerilog：tree-sitter 真实 AST <span class="tag blue">核心</span></h2>
+<p class="ref">整个工具的命门在 systemverilog.py 的前 20 行</p>
+<h3 id="sv-c1">4.1 为什么不用正则</h3>
+<p>解析「哪些是 class、谁继承谁、方法归属哪个类」，最容易想到的是正则 + 括号匹配。但 SV 语法太灵活——<code>virtual function</code>、<code>extern</code> 声明、<code>pure virtual</code>、宏包裹、注释里的假代码……正则很快会漏匹配或误匹配，而且维护不下去。</p>
+<p>正确姿势是交给一个真正的语法解析器。这里选的是 <strong>tree-sitter</strong>：一个增量解析框架，配上一份 SV 的 grammar（<code>tree-sitter-systemverilog</code>），就能把源码变成一棵 <strong>语法树（AST）</strong>——每个 <code>class</code>、<code>function</code>、<code>extends</code> 都是树上一个有类型的节点，而不是一段要靠正则猜的文本。</p>
+<h3 id="sv-c2">4.2 三行接入 grammar</h3>
+<p>接入 tree-sitter-systemverilog 只用了三行：</p>
+<pre><code><span class="kw">import</span> tree_sitter_systemverilog <span class="kw">as</span> tssv
+<span class="kw">from</span> tree_sitter <span class="kw">import</span> Language, Parser
+
+_PARSER = Parser(Language(tssv.language()))   <span class="cmt"># 拿到 SV 的 grammar，构建解析器</span></code></pre>
+<p><code>tssv.language()</code> 返回 tree-sitter 的 <code>Language</code> 对象（SV 语法规则），塞进 <code>Parser</code> 就得到一个能解析 SV 源码的解析器。之后对任意 SV 文本调 <code>_PARSER.parse(source).root_node</code>，就得到整棵语法树的根节点，再递归遍历即可。</p>
+<h3 id="sv-c3">4.3 识别 class / extends / 方法</h3>
+<p>核心是一个递归 <code>walk</code>：从根节点往下，遇到特定 <strong>节点类型</strong> 就做对应提取。关键是这张类型清单——它把「SV 里什么算方法」写全了：</p>
+<pre><code>_METHOD_TYPES = (
+    <span class="str">"function_declaration"</span>,   <span class="cmt"># function 实现</span>
+    <span class="str">"task_declaration"</span>,        <span class="cmt"># task 实现</span>
+    <span class="str">"function_prototype"</span>,      <span class="cmt"># extern function 声明</span>
+    <span class="str">"task_prototype"</span>,           <span class="cmt"># extern task 声明</span>
+    <span class="str">"class_constructor_declaration"</span>,  <span class="cmt"># new()</span>
+    <span class="str">"class_constructor_prototype"</span>,
+)</code></pre>
+<p>遍历时：</p>
+<ul>
+<li>遇到 <code>class_declaration</code> → 建一个 class 记录，提取名字、行号；</li>
+<li>class 里有 <code>class_type</code> 子节点 → 那就是 <code>extends 父类</code>，提取父类名存进 <code>base_classes</code>；</li>
+<li>遇到上面那些方法类型 → 提取方法名，挂到当前 class 的 <code>methods</code> 里；</li>
+<li>构造函数特殊处理，统一命名成 <code>new</code>。</li>
+</ul>
+<p>提取父类的关键函数长这样——沿着 <code>class_type → simple_identifier</code> 取到标识符文本：</p>
+<pre><code><span class="kw">def</span> _class_base(node, source):
+    ct = _direct_child(node, <span class="str">"class_type"</span>)
+    n = _direct_child(ct, <span class="str">"simple_identifier"</span>)
+    <span class="kw">return</span> source[n.start_byte : n.end_byte].decode()</code></pre>
+<div class="analogy">
+<div class="lbl">为什么用节点类型而不是文本匹配</div>
+<p style="margin:6px 0 0">正则看到的是「一串字符」，tree-sitter 看到的是「一个 class_declaration 节点，下面挂着一个 class_type 子节点」。后者天生带着语法结构，<code>extends</code> 关系、方法归属、注释位置都变成了树的父子关系，提取只是「按类型找子节点」，不用猜。</p>
+</div>
+<h3 id="sv-c4">4.4 doc 注释怎么挂对位置</h3>
+<p>方法/类的 docstring 来自源码里 <code>/** ... */</code> 形式的注释。难点是「怎么确定这个注释属于下面哪个声明」——尤其 SV 里注释和声明之间可能隔着 <code>extern</code>、<code>virtual</code>、<code>static</code> 这些修饰符。</p>
+<p>做法：先扫出所有 <code>/** ... */</code> 注释（记录结束位置），对每个声明找「结束位置最靠近、且中间只隔修饰符/空白」的那条注释。中间的修饰符白名单长这样：</p>
+<pre><code>_MODIFIERS_RE = re.compile(
+    <span class="str">r"^(?:\s*(?:extern|virtual|static|pure|local|protected|public|rand|randc|const|automatic))*\s*$"</span>
+)</code></pre>
+<p>这样 <code>/** doc */ virtual function f();</code> 里的注释也能正确挂到 <code>f</code> 上，而不是因为中间有个 <code>virtual</code> 就丢了。</p>
+</section><section class="card" id="uvm">
+<h2><span class="no">5</span>识别 UVM：本质是 class + extends <span class="tag amber">核心</span></h2>
+<p class="ref">UVM 没有单独的 grammar，因为它本来就是 SV</p>
+<p class="lead">这是最容易误解的一点：<strong>svcode-skill-seekers 并没有「UVM 解析器」</strong>。UVM 里的 <code>uvm_object</code>、<code>uvm_component</code>、<code>uvm_sequence</code>、<code>uvm_driver</code>、<code>uvm_monitor</code>……统统都是 SystemVerilog 的 <code>class</code>。</p>
+<p>验证工程师写的 UVM 代码，本质就是「定义一堆 class，并用 <code>extends</code> 表达它们之间的继承关系」：</p>
+<pre><code><span class="cmt">/** AXI slave agent: 驱动接口的 slave 侧 */</span>
+<span class="kw">class</span> axi_slave_agent <span class="kw">extends</span> uvm_component;
+
+  <span class="cmt">/** 构建 driver 和 monitor */</span>
+  <span class="kw">virtual function void</span> build_phase(uvm_phase phase);
+    super.build_phase(phase);
+  <span class="kw">endfunction</span>
+
+  <span class="cmt">/** 返回 slave driver 句柄 */</span>
+  <span class="kw">virtual function</span> axi_slave_driver get_driver();
+    <span class="kw">return</span> driver;
+  <span class="kw">endfunction</span>
+
+<span class="kw">endclass</span></code></pre>
+<p>对这段代码，前面的解析逻辑会自然产出：一个 class <code>axi_slave_agent</code>，<code>base_classes = ["uvm_component"]</code>，两个方法 <code>build_phase</code>、<code>get_driver</code>，各自挂着 doc 注释。</p>
+<p>换句话说：<strong>「识别 UVM」=「识别 SV class」+「提取 extends 的父类」</strong>。只要把 <code>extends</code> 关系抓准，UVM 的组件层次（谁继承 uvm_component、谁继承 uvm_sequence、driver 继承哪个 base）就自动浮现了，根本不需要为 UVM 单独写一套规则。</p>
+<div class="callout green">
+<div class="title">这也解释了为什么用 tree-sitter 就够</div>
+<p class="lead" style="margin:0">UVM 不是一种新语言，是 SV 之上的一套库 + 约定。所以一份 SV 的 grammar 就同时覆盖了「普通 SV」和「UVM」，svcode-skill-seekers 才能用最小的改动补上这个空白。</p>
+</div>
+</section><section class="card" id="seam">
+<h2><span class="no">6</span>与 skill-seekers 的「缝合」 <span class="tag green">设计</span></h2>
+<p class="ref">两条线对齐，让下游能复用，而不是另起炉灶</p>
+<h3 id="seam-c1">6.1 输出 shape 对齐</h3>
+<p>skill-seekers 分析 C/C++ 后产出的结构是 <code>{"classes": [...], "functions": [...], "comments": [...]}</code>。svcode-skill-seekers 的 <code>systemverilog.py</code> 也输出<strong>一模一样的 shape</strong>：</p>
+<pre><code>{
+  <span class="str">"classes"</span>: [
+    {<span class="str">"name"</span>, <span class="str">"base_classes"</span>, <span class="str">"methods"</span>, <span class="str">"docstring"</span>, <span class="str">"line_number"</span>}
+  ],
+  <span class="str">"functions"</span>: [...],
+  <span class="str">"comments"</span>: [...]
+}</code></pre>
+<p>这个对齐是刻意的：只要解析结果长一个样，后面「渲染成 markdown、打包成 skill」的下游工具就不用改一行，直接消费。</p>
+<h3 id="seam-c2">6.2 拷贝复用 APIReferenceBuilder</h3>
+<p>下游那一段（把 classes/functions 渲染成 <code>references/api_reference/*.md</code>）干脆直接<strong>从 skill-seekers 原样拷贝</strong>了 <code>APIReferenceBuilder</code>（MIT 协议，文件头保留了版权声明）。</p>
+<p>这样做的取舍很清晰：</p>
+<ul>
+<li><strong>省</strong>：markdown 渲染（签名、参数表、继承标注）是纯格式活，跟语言无关，没必要重写；</li>
+<li><strong>独立</strong>：拷贝而非 <code>import skill_seekers</code>，保证 svcode-skill-seekers 零 skill-seekers 运行时依赖，装起来只要 tree-sitter 两个包。</li>
+</ul>
+<p>所以准确说，svcode-skill-seekers 的「原创」只有 <code>systemverilog.py</code>（SV AST 解析）和 <code>scraper.py</code>（遍历过滤），其余是「复用 skill-seekers 的下游 + 一个薄薄的 <code>cli.py</code>」。这是一次典型的「缝合」而非「重造」。</p>
+</section><section class="card" id="practice">
+<h2><span class="no">7</span>实战与诚实的边界 <span class="tag red">落地</span></h2>
+<p class="ref">跑通了一个真实目录，也清楚哪里还没做</p>
+<h3 id="practice-c1">7.1 给 axi_vip 生成方法级 API</h3>
+<p>拿某商业 AMBA 验证 IP（VIP）的 AXI 部分跑了一遍，用过滤参数只抓 <code>axi_</code> 前缀、去掉 <code>com/mti/ncv</code> 仿真器变体和 <code>.ovm./.vmm.</code> 方法学变体：</p>
+<pre><code>svcode-skill-seekers create &lt;某 AMBA VIP 目录&gt; \
+  --filter axi_ \
+  --exclude-dir com --exclude-dir mti --exclude-dir ncv \
+  --exclude-name .ovm. --exclude-name .vmm.</code></pre>
+<p>结果：<strong>177 文件 → 417 类 → 4260 方法</strong>，生成的方法级 API 文档直接喂给了 <code>axi_vip</code> 这个 skill 的 <code>references/api_reference/</code>，让 Claude 能按需查到「某个 class 继承谁、某方法干嘛的」。</p>
+<h3 id="practice-c2">7.2 目前没做的事</h3>
+<p>诚实说，当前提取的粒度是「<strong>类 + 继承 + 方法名 + docstring + 行号</strong>」。方法 dict 里的 <code>parameters</code>（参数列表）和 <code>return_type</code>（返回类型）还是空占位，没有真正解析出来：</p>
+<pre><code><span class="kw">def</span> _method_dict(name, node, doc, is_method):
+    <span class="kw">return</span> {
+        <span class="str">"name"</span>: name,
+        <span class="str">"parameters"</span>: [],        <span class="cmt"># 未解析：暂为空</span>
+        <span class="str">"return_type"</span>: <span class="kw">None</span>,    <span class="cmt"># 未解析：暂为 None</span>
+        <span class="str">"docstring"</span>: doc,
+        <span class="str">"line_number"</span>: ...,
+        ...
+    }</code></pre>
+<p>也就是说，现在能回答「有哪些类、谁继承谁、方法叫什么、注释写了什么」，但还不能回答「这个方法的完整签名（参数类型和返回类型）」。tree-sitter 的 AST 里这些信息都在（<code>function_declaration</code> 下有参数和返回类型子节点），只是还没写提取逻辑——这是下一步的自然延伸，而不是能力天花板。</p>
+<div class="callout amber">
+<div class="title">一句话总结</div>
+<p class="lead" style="margin:0">svcode-skill-seekers = <strong>用 tree-sitter 把 SV/UVM 源码变成真实语法树</strong>，按节点类型提取 class / extends / 方法 / doc 注释，再<strong>对齐 skill-seekers 的输出 shape</strong> 复用它的下游渲染——用最少的代码，补上 skill-seekers 不认 SystemVerilog 这块空白。</p>
+</div>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>
