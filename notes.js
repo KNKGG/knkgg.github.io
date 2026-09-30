@@ -56,5 +56,12 @@ const NOTES = [
     category: "AI Tools",
     url: "notes/2026-09-29-skill-seekers-三方对比.html",
     desc: "对比 skill-seekers、simple-skill-seekers、svcode-skill-seekers 三方的定位，以及 tree-sitter 如何解析 SystemVerilog/UVM 源码"
+  },
+  {
+    title: "iPhone 连 Mac 终端跑 Claude Code · 异地远程方案",
+    date: "2026-09-30",
+    category: "AI Tools",
+    url: "notes/2026-09-30-iPhone连Mac跑ClaudeCode.html",
+    desc: "Tailscale + SSH + tmux + disablesleep 四件套，异地用 iPhone 连回 Mac 跑 Claude Code 的完整方案与踩坑"
   }
 ];
