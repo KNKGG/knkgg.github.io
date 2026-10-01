@@ -1,468 +1,126 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>济南四日游攻略</title><style>
-:root {
-  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
-  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
-  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>济南四日游攻略 - KNK'S 攻略站</title>
+  <link rel="stylesheet" href="../assets/style.css?v=20260925" />
+</head>
+<body>
+  <div class="container">
+    <a class="back-link" href="../index.html">← 返回目录</a>
+    <article class="note">
+      <h1>济南四日游攻略</h1>
+      <p class="meta">2026-10-01 · 旅行</p>
 
-  --ink: #23204a;
-  --ink-soft: #4a4770;
-  --ink-mute: #8a86a8;
-  --paper: #f7f2e4;
-  --paper-soft: #efe8d6;
-  --card: #fbf6e8;
-  --rule: #e6ddc8;
-  --rule-strong: #d3c8ad;
+      <p>以「明湖四季」（天桥区北湖核心区，大明湖以北约 1.3 公里）为起点的四日串线。已订票：<strong>10月1日 趵突泉</strong>、<strong>10月3日 山东博物馆</strong>。</p>
 
-  --accent: #1E3A8A;      /* 藏青 */
-  --accent-2: #E8682A;    /* 珊瑚橙 */
-  --accent-3: #E9A23B;    /* 琥珀 */
-  --green: #2f9e6e;
-  --red: #d64550;
-  --purple: #8b5cf6;
+      <h2>行程总览</h2>
+      <ul>
+        <li><strong>Day1（10月1日）泉城核心区</strong>：大明湖、五龙潭、黑虎泉、趵突泉、曲水亭街</li>
+        <li><strong>Day2（10月2日）千佛山</strong>：半天即可，下午自由</li>
+        <li><strong>Day3（10月3日）山东博物馆</strong>：城东，慢慢逛半天</li>
+        <li><strong>Day4（10月4日）老商埠 Citywalk</strong>：百年建筑 + 网红打卡</li>
+      </ul>
 
-  --code-bg: #f5f1e7;
-  --code-ink: #2b2845;
+      <h2>完整时刻表</h2>
 
-  --sidebar-w: 300px;
-  --content-w: 860px;
-}
+      <h3>Day1 泉城核心区（10月1日 · 11点出门）</h3>
+      <ul>
+        <li><strong>11:00</strong> 出门去大明湖（步行 1.3km）</li>
+        <li><strong>11:20–12:50</strong> 大明湖环湖</li>
+        <li><strong>12:50–13:40</strong> 午饭</li>
+        <li><strong>14:00–14:40</strong> 五龙潭</li>
+        <li><strong>14:40–15:50</strong> 黑虎泉 + 解放阁 + 泉城广场</li>
+        <li><strong>16:00–17:30</strong> 趵突泉（傍晚错峰）</li>
+        <li><strong>17:30–19:00</strong> 曲水亭街/珍珠泉/芙蓉街（晚饭）</li>
+        <li><strong>19:10</strong> 大明湖超然楼亮灯（可选）</li>
+      </ul>
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; font-size: 16px; }
-@media (min-width: 1200px) { html { font-size: 17px; } }
-body {
-  margin: 0;
-  font-family: var(--font-en), var(--font-zh), sans-serif;
-  color: var(--ink);
-  background: var(--paper);
-  line-height: 1.8;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-wrap: pretty;
-}
+      <h3>Day2 千佛山（10月2日）</h3>
+      <ul>
+        <li><strong>10:00</strong> 起床 + 早午餐</li>
+        <li><strong>11:00</strong> 出发（打车约 20 分钟）</li>
+        <li><strong>11:20–14:30</strong> 千佛山（上山 → 兴国禅寺 → 摩崖造像 → 登顶）</li>
+        <li><strong>14:30–15:30</strong> 下山 + 午饭</li>
+        <li><strong>下午</strong> 自由：回住处休息 / 逛泉城路宽厚里</li>
+      </ul>
 
-.sidebar {
-  position: fixed; top: 0; left: 0; bottom: 0;
-  width: var(--sidebar-w);
-  background: var(--paper-soft);
-  border-right: 1px solid var(--rule);
-  overflow-y: auto;
-  padding: 2.2rem 1.2rem 3rem 1.6rem;
-  z-index: 10;
-}
-.sidebar-brand {
-  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--accent-2);
-  padding: 0 0.4rem; margin-bottom: 1rem;
-}
-#toc ul { list-style: none; padding: 0; margin: 0; }
-#toc > ul > li { margin: 0.15rem 0; }
-#toc a {
-  display: block; color: var(--ink-soft); text-decoration: none;
-  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
-  transition: background 100ms, color 100ms;
-}
-#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
-#toc a.active {
-  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
-  font-weight: 600;
-}
-#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
-#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+      <h3>Day3 山东博物馆（10月3日）</h3>
+      <ul>
+        <li><strong>10:00</strong> 起床 + 早午餐</li>
+        <li><strong>11:00</strong> 出发（打车约 30–40 分钟）</li>
+        <li><strong>11:40–14:30</strong> 逛博物馆（连续一场）</li>
+        <li><strong>14:30–15:30</strong> 午饭（奥体中心/万象城）</li>
+        <li><strong>15:30 起</strong> 自由：宽厚里/泉城路 或 洪家楼教堂</li>
+      </ul>
 
-.content {
-  margin-left: var(--sidebar-w);
-  max-width: var(--content-w);
-  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
-}
+      <h3>Day4 老商埠（10月4日）</h3>
+      <ul>
+        <li><strong>10:00</strong> 起床 + 早午餐</li>
+        <li><strong>11:00</strong> 出发（打车约 15–20 分钟）</li>
+        <li><strong>11:20–12:40</strong> 经二路老建筑群</li>
+        <li><strong>12:40–13:30</strong> 午饭：融汇老商埠</li>
+        <li><strong>13:30–14:15</strong> 商埠文化博物馆</li>
+        <li><strong>14:15–15:15</strong> 老商埠艺术中心</li>
+        <li><strong>15:15–15:45</strong> 中山公园</li>
+        <li><strong>15:45–17:30</strong> 网红打卡点拍照</li>
+        <li><strong>17:30</strong> 回住处</li>
+      </ul>
 
-header.hero {
-  margin-bottom: 3rem; padding-bottom: 1.5rem;
-  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
-  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
-}
-header.hero h1 {
-  font-family: var(--font-zh); font-weight: 600;
-  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
-  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
-}
-header.hero .sub { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
-header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
-header.hero .meta code, .ref code {
-  color: var(--accent); background: var(--paper-soft);
-  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
-}
+      <h2>Day1 泉城核心区（10月1日）</h2>
+      <p>国庆当天趵突泉最挤，建议傍晚 16:00 后进园错峰（开放至 19:00）。游览顺序：</p>
+      <ol>
+        <li><strong>大明湖</strong>（免费）——环湖走半圈。</li>
+        <li><strong>五龙潭</strong>（免费）——大明湖西边，看泉池。</li>
+        <li><strong>黑虎泉 + 解放阁</strong>——接泉水直饮，登解放阁看护城河。</li>
+        <li><strong>趵突泉</strong>（门票 40）——傍晚进，看三股泉 + 李清照纪念堂。</li>
+        <li><strong>曲水亭街 / 珍珠泉 / 芙蓉街</strong>——晚上逛老巷子 + 吃晚饭。</li>
+      </ol>
+      <blockquote>避坑：别自驾进老城（堵且停车贵）；穿防滑鞋（青石板湿滑）；自带水瓶接免费泉水；别信出租车司机推荐的店。</blockquote>
 
-section.card {
-  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
-  padding: 2rem 2.2rem; margin-bottom: 2rem;
-  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
-  scroll-margin-top: 1.5rem;
-}
-section.card h2 {
-  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
-  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
-  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
-}
-section.card h2 .no {
-  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
-  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
-  padding: 0 0.35rem;
-}
-section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+      <h2>Day2 千佛山（10月2日）</h2>
+      <p>3 小时就能逛完，<strong>不用单独一整天</strong>。门票 30，索道单程 20，早 5–6:30 / 晚 18 后免费入园。</p>
+      <ul>
+        <li>兴国禅寺（可免费领香）、千佛崖摩崖造像</li>
+        <li>登顶俯瞰整个济南老城</li>
+        <li>万佛洞另购 25 元，非必打卡</li>
+      </ul>
 
-h3, h4 {
-  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
-  scroll-margin-top: 1.5rem;
-}
-h3 {
-  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
-  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
-}
-h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+      <h2>Day3 山东博物馆（10月3日）</h2>
+      <p>免费但需公众号分时段预约（节假日提前 7 天）。9:00–17:00，16:00 停止入馆，周一闭馆。</p>
+      <ul>
+        <li><strong>十大镇馆之宝</strong>基本都在二层 6–9 号厅（红陶兽形壶、蛋壳黑陶杯、亚醜钺、颂簋、鲁国大玉璧、甲骨文、银雀山汉简、东平汉墓壁画、九旒冕、郑燮双松图）</li>
+        <li>讲解器 20 元，靠近文物自动感应</li>
+        <li>馆内无餐饮，午饭去东边万象城</li>
+      </ul>
 
-p { margin: 0 0 1rem; }
-.lead { color: #4a4770; }
-strong, b { font-weight: 600; color: var(--ink); }
+      <h2>Day4 老商埠 Citywalk（10月4日）</h2>
+      <p>免费全天开放，复古红砖建筑 + 网红打卡点，必打卡：</p>
+      <ul>
+        <li>爱心红绿灯 + 爱心斑马线（经三纬三路口）</li>
+        <li>「济南」大字墙（10 号楼旁）</li>
+        <li>夹心胡同 + 巨型漂浮爱心（9–14 号楼间）</li>
+        <li>玫瑰瀑布（张采丞故居外墙）</li>
+        <li>老商埠艺术中心（蓬皮杜中心主题店，经四路小纬二路口）</li>
+      </ul>
 
-.tag {
-  display: inline-block; font-size: 0.72rem; font-weight: 600;
-  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
-  vertical-align: middle; letter-spacing: 0.02em;
-}
-.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
-.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
-.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
-.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
-.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+      <h2>必吃美食</h2>
+      <ul>
+        <li><strong>把子肉</strong>：超意兴（性价比，人均 15）、老兵（老店风味，人均 30）、武岳庙（深夜食堂）、刘小忙（2025 必吃榜）</li>
+        <li><strong>小吃</strong>：油旋、甜沫、酥锅、泉水爆肚、章丘烤肉卷</li>
+        <li><strong>鲁菜</strong>：九转大肠、糖醋鲤鱼（会仙楼、燕喜堂）</li>
+        <li><strong>羊汤馆</strong>：大明湖/趵突泉附近的宝藏老店</li>
+      </ul>
 
-code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
-:not(pre) > code {
-  background: color-mix(in oklab, var(--accent), transparent 90%);
-  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
-}
-pre {
-  margin: 1.1rem 0; padding: 1rem 1.2rem;
-  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
-  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
-  font-family: var(--font-mono);
-}
-pre code { background: transparent; padding: 0; color: inherit; }
-pre code .kw   { color: #1E3A8A; font-weight: 600; }
-pre code .str  { color: #C04E1A; }
-pre code .num  { color: #9a6a00; }
-pre code .type { color: #5b3fbf; }
-pre code .cmt  { color: #3f6b4f; }
-
-.layer {
-  border: 1.5px solid var(--rule-strong); border-radius: 10px;
-  padding: 0.7rem 1rem; background: var(--card); text-align: center;
-}
-.layer .name { font-size: 0.92rem; color: var(--ink); font-weight: 600; line-height: 1.5; }
-.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.25rem; line-height: 1.55; }
-.layer .desc code, .layer .name code { color: var(--accent); }
-.layer.blue   { border-color: var(--accent);   background: color-mix(in oklab, var(--accent), transparent 95%); }
-.layer.orange { border-color: var(--accent-2); background: color-mix(in oklab, var(--accent-2), transparent 95%); }
-.layer.green  { border-color: var(--green);    background: color-mix(in oklab, var(--green), transparent 94%); }
-.layer.m1 { border-color: #E6B3C2; background: #FAEDF2; }
-.layer.m2 { border-color: #E7C0AC; background: #FAF0E8; }
-.layer.m3 { border-color: #B5CFBC; background: #EFF6F1; }
-.layer.m4 { border-color: #B0C6DE; background: #EEF4F9; }
-
-.vflow { display: flex; flex-direction: column; align-items: center; }
-.vflow > .layer, .vflow > .split { width: 100%; max-width: 480px; }
-.vflow .link {
-  position: relative; width: 2px; height: 40px; flex: none;
-  background: linear-gradient(180deg, var(--accent), var(--accent-2));
-}
-.vflow .link::after {
-  content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
-  width: 0; height: 0;
-  border-left: 6px solid transparent; border-right: 6px solid transparent;
-  border-top: 9px solid var(--accent-2);
-}
-
-table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
-thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
-th {
-  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
-  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
-  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
-}
-td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
-tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
-td code, th code { color: var(--accent); }
-
-.callout {
-  border-left: 4px solid var(--accent);
-  background: color-mix(in oklab, var(--accent), transparent 94%);
-  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
-}
-.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
-.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
-.callout.red    { border-left-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
-.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
-.callout p:last-child { margin-bottom: 0; }
-
-.analogy {
-  border: 1px dashed var(--accent-3);
-  background: color-mix(in oklab, var(--accent-3), transparent 95%);
-  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
-}
-.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
-.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
-.analogy p:last-child { margin-bottom: 0; }
-
-ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
-ul li::marker { color: var(--accent-3); }
-ol li::marker { color: var(--accent-3); font-weight: 600; }
-li { margin: 0.3rem 0; }
-
-@media (max-width: 768px) {
-  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
-  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
-}
-
-::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
-</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul>
-<li><a class="lvl1" href="#overview">1. 行程总览</a><ul></ul></li>
-<li><a class="lvl1" href="#schedule">2. 完整时刻表</a><ul>
-<li><a class="lvl2" href="#schedule-d1">2.1 Day1 泉城核心区</a><ul></ul></li>
-<li><a class="lvl2" href="#schedule-d2">2.2 Day2 千佛山</a><ul></ul></li>
-<li><a class="lvl2" href="#schedule-d3">2.3 Day3 山东博物馆</a><ul></ul></li>
-<li><a class="lvl2" href="#schedule-d4">2.4 Day4 老商埠</a><ul></ul></li>
-</ul></li>
-<li><a class="lvl1" href="#day1">3. Day1 泉城核心区</a><ul></ul></li>
-<li><a class="lvl1" href="#day2">4. Day2 千佛山</a><ul></ul></li>
-<li><a class="lvl1" href="#day3">5. Day3 山东博物馆</a><ul></ul></li>
-<li><a class="lvl1" href="#day4">6. Day4 老商埠 Citywalk</a><ul>
-<li><a class="lvl2" href="#day4-c1">6.1 先分清两个「艺术中心」</a><ul></ul></li>
-<li><a class="lvl2" href="#day4-c2">6.2 经二路老建筑群</a><ul></ul></li>
-</ul></li>
-<li><a class="lvl1" href="#food">7. 必吃美食</a><ul></ul></li>
-<li><a class="lvl1" href="#tips">8. 实用信息</a><ul></ul></li>
-</ul></nav></aside><main class="content"><header class="hero">
-<h1>济南四日游攻略</h1>
-<div class="sub">以「明湖四季」为起点的四日串线方案：趵突泉、山东博物馆、老商埠艺术中心一次走完，附交通与美食</div>
-<div class="meta">
-  出发地：<code>明湖四季（天桥区·北湖核心区）</code> ·
-  已订票：<code>10月1日 趵突泉</code> · <code>10月3日 山东博物馆</code> ·
-  信息截至 2026-09
-</div>
-</header><section class="card" id="overview">
-<h2><span class="no">1</span>行程总览 <span class="tag blue">总览</span></h2>
-<p class="ref">四个核心点分布在城北（家）、老城区（泉群）、城东（博物馆）、城西（老商埠），按地理位置就近串成四天</p>
-<p class="lead">住处「明湖四季」在大明湖以北约 1.3 公里、地铁 2 号线北园站旁，泉城核心景区就在家门口南边。以下四天按<strong>离住处由近到远</strong>排，前两天的票已订好。</p>
-<table>
-<tr><th>天</th><th>主题</th><th>地点串线</th><th>交通</th></tr>
-<tr><td><strong>Day1</strong>（10月1日）</td><td>泉城核心区</td><td>大明湖 → 五龙潭 → 趵突泉 → 泉城广场 → 黑虎泉 → 曲水亭街/芙蓉街</td><td>全程步行</td></tr>
-<tr><td><strong>Day2</strong>（10月2日）</td><td>千佛山</td><td>登千佛山俯瞰全城</td><td>打车约 20 分钟 / 公交</td></tr>
-<tr><td><strong>Day3</strong>（10月3日）</td><td>山东博物馆</td><td>山东博物馆（三号票）</td><td>打车 / 地铁 2 转 3</td></tr>
-<tr><td><strong>Day4</strong>（10月4日）</td><td>老商埠 Citywalk</td><td>老商埠艺术中心 + 经二路老建筑群 + 融汇老商埠</td><td>打车约 15–20 分钟</td></tr>
-</table>
-</section><section class="card" id="schedule">
-<h2><span class="no">2</span>完整时刻表 <span class="tag purple">速查</span></h2>
-<p class="ref">按 10 点起床设计的时间轴，含交通与用餐</p>
-<div class="callout amber">
-<div class="title">Day1 今天 11 点出门</div>
-<p class="lead" style="margin:0">趵突泉改到傍晚（16:00 后）错峰，其余 Day2–Day4 都 10 点起床慢慢来。</p>
-</div>
-<h3 id="schedule-d1">2.1 Day1 泉城核心区（10月1日 · 11点出门）</h3>
-<table>
-<tr><th>时间</th><th>安排</th><th>交通</th></tr>
-<tr><td>11:00</td><td>出门去大明湖</td><td>步行 1.3km</td></tr>
-<tr><td>11:20–12:50</td><td>大明湖环湖（免费）</td><td>—</td></tr>
-<tr><td>12:50–13:40</td><td>午饭</td><td>芙蓉街/大明湖附近</td></tr>
-<tr><td>13:40–14:00</td><td>去五龙潭</td><td>步行 15 分钟</td></tr>
-<tr><td>14:00–14:40</td><td>五龙潭（免费）</td><td>—</td></tr>
-<tr><td>14:40–15:50</td><td>黑虎泉 + 解放阁 + 泉城广场</td><td>步行串联</td></tr>
-<tr><td>15:50–16:00</td><td>去趵突泉</td><td>步行 8 分钟</td></tr>
-<tr><td>16:00–17:30</td><td><strong>趵突泉（用票，傍晚错峰）</strong></td><td>三股泉 + 李清照纪念堂</td></tr>
-<tr><td>17:30–19:00</td><td>曲水亭街/珍珠泉/芙蓉街（逛 + 晚饭）</td><td>步行</td></tr>
-<tr><td>19:10</td><td>（可选）大明湖超然楼亮灯</td><td>步行</td></tr>
-</table>
-<h3 id="schedule-d2">2.2 Day2 千佛山（10月2日）</h3>
-<table>
-<tr><th>时间</th><th>安排</th><th>交通</th></tr>
-<tr><td>10:00</td><td>起床 + 早午餐</td><td>—</td></tr>
-<tr><td>11:00</td><td>出发去千佛山</td><td>打车约 20 分钟</td></tr>
-<tr><td>11:20–14:30</td><td>千佛山：上山 → 兴国禅寺 → 摩崖造像 → 登顶俯瞰（可带零食）</td><td>徒步或索道</td></tr>
-<tr><td>14:30–15:30</td><td>下山 + 午饭</td><td>千佛山附近</td></tr>
-<tr><td>下午/傍晚</td><td>自由：回住处休息 / 逛泉城路宽厚里</td><td>看体力</td></tr>
-</table>
-<h3 id="schedule-d3">2.3 Day3 山东博物馆（10月3日）</h3>
-<table>
-<tr><th>时间</th><th>安排</th><th>交通</th></tr>
-<tr><td>10:00</td><td>起床 + 早午餐</td><td>—</td></tr>
-<tr><td>11:00</td><td>出发去博物馆</td><td>打车约 30–40 分钟</td></tr>
-<tr><td>11:40–14:30</td><td>逛博物馆（连续一场：甲骨、汉画像石、十大镇馆之宝）</td><td>—</td></tr>
-<tr><td>14:30–15:30</td><td>午饭（奥体中心 / 万象城）</td><td>—</td></tr>
-<tr><td>15:30 起</td><td>自由：宽厚里/泉城路 或 洪家楼教堂</td><td>轻松收尾</td></tr>
-</table>
-<h3 id="schedule-d4">2.4 Day4 老商埠（10月4日）</h3>
-<table>
-<tr><th>时间</th><th>安排</th><th>交通</th></tr>
-<tr><td>10:00</td><td>起床 + 早午餐</td><td>—</td></tr>
-<tr><td>11:00</td><td>出发去老商埠</td><td>打车约 15–20 分钟</td></tr>
-<tr><td>11:20–12:40</td><td>经二路老建筑群（德华银行、邮政大楼、瑞蚨祥、宏济堂博物馆、阜成信东记）</td><td>步行串联</td></tr>
-<tr><td>12:40–13:30</td><td>午饭：融汇老商埠（张采丞故居）</td><td>—</td></tr>
-<tr><td>13:30–14:15</td><td>商埠文化博物馆</td><td>步行</td></tr>
-<tr><td>14:15–15:15</td><td>老商埠艺术中心（蓬皮杜主题店）</td><td>步行</td></tr>
-<tr><td>15:15–15:45</td><td>中山公园</td><td>步行</td></tr>
-<tr><td>15:45–17:30</td><td>网红打卡点拍照（夹心胡同、巨型玫瑰、爱心斑马线、梧桐街道）</td><td>步行</td></tr>
-<tr><td>17:30</td><td>回住处</td><td>打车约 15–20 分钟</td></tr>
-</table>
-</section><section class="card" id="day1">
-<h2><span class="no">3</span>Day1 泉城核心区 <span class="tag amber">11点出门</span></h2>
-<p class="ref">10月1日｜11点出门，趵突泉改傍晚错峰，票已就位</p>
-<p class="lead">上午先逛大明湖、五龙潭，傍晚 16:00 后再进趵突泉错峰，晚上收在曲水亭街。</p>
-<ol>
-<li><strong>大明湖</strong>（免费）——先逛，环湖走半圈。</li>
-<li><strong>五龙潭</strong>（免费）——大明湖西边，看泉池。</li>
-<li><strong>黑虎泉 + 解放阁</strong>——大明湖东南，看打水 + 登解放阁，泉水可直饮。</li>
-<li><strong>趵突泉</strong>（门票 40，旺季 7:00–19:00）——傍晚 16:00 后进，错峰，三股泉水 + 李清照纪念堂。</li>
-<li><strong>曲水亭街 / 珍珠泉 / 芙蓉街</strong>——晚上逛老巷子 + 吃晚饭（把子肉、油旋、甜沫）。</li>
-</ol>
-<h3>交通穿梭（全程步行，不用骑车）</h3>
-<table>
-<tr><th>这一段</th><th>方式</th><th>大约时间</th></tr>
-<tr><td>住处 → 大明湖</td><td>步行（约 1.3 公里）</td><td>20 分钟</td></tr>
-<tr><td>大明湖 → 五龙潭</td><td>步行（约 1 公里）</td><td>15 分钟</td></tr>
-<tr><td>五龙潭 → 黑虎泉/解放阁</td><td>步行（约 1.5 公里）</td><td>20 分钟</td></tr>
-<tr><td>黑虎泉 → 趵突泉</td><td>步行（约 800 米）</td><td>12 分钟</td></tr>
-<tr><td>趵突泉 → 曲水亭街/芙蓉街</td><td>步行（约 1 公里）</td><td>15 分钟</td></tr>
-<tr><td>晚上回住处</td><td>打车（或公交）</td><td>约 10 分钟</td></tr>
-</table>
-<p class="lead">全天步行约 5 公里，老城区本就适合步行，全程不用骑车；走累了随时打车，都在起步价内。</p>
-<div class="callout amber">
-<div class="title">趵突泉三个避坑</div>
-<p class="lead" style="margin:0">① 别自驾进老城（堵且停车贵）；② 穿防滑鞋，园内青石板湿滑；③ 自带水瓶，园内有免费直饮点可接泉水。</p>
-</div>
-<div class="callout amber">
-<div class="title">顺路可加的名泉线</div>
-<p class="lead" style="margin:0"><strong>珍珠泉</strong>（曲水亭街旁，免费）和<strong>解放阁</strong>（黑虎泉旁，免费）都在这条线上，时间够就顺路逛；晚上回<strong>大明湖看超然楼亮灯</strong>（约 19:10）。</p>
-</div>
-<div class="callout green">
-<div class="title">泉水可以直接喝</div>
-<p class="lead" style="margin:0">黑虎泉、五龙潭的泉水都是可直饮的，带个杯子去接，本地人就这么干。</p>
-</div>
-</section><section class="card" id="day2">
-<h2><span class="no">4</span>Day2 千佛山 <span class="tag blue">城南</span></h2>
-<p class="ref">10月2日｜城南山，登高俯瞰全城</p>
-<p class="lead">千佛山在城南经十路沿线，与趵突泉、大明湖并称济南三大名胜。主峰约 285 米，<strong>3 小时就能逛完，不用单独一整天</strong>，下午可自由安排。</p>
-<ul>
-<li><strong>门票</strong>：30 元，索道单程 20、滑道 30–50；早 5–6:30 / 晚 18 后免费入园。</li>
-<li><strong>登山</strong>——徒步或索道，山顶俯瞰整个济南老城和大明湖。</li>
-<li><strong>兴国禅寺、摩崖造像</strong>——隋唐石刻，山腰核心看头，禅寺可免费领香。</li>
-<li><strong>万佛洞</strong>——仿四大石窟，另购票 25 元，非必打卡。</li>
-</ul>
-<h3>交通怎么去（单点，不用骑车）</h3>
-<table>
-<tr><th>方式</th><th>路线</th><th>大约时间</th></tr>
-<tr><td><strong>打车（推荐）</strong></td><td>直接到千佛山北门</td><td>约 20 分钟（5 公里）</td></tr>
-<tr><td>地铁</td><td>4 号线「千佛山」站 C 口出</td><td>步行 5 分钟到北门</td></tr>
-<tr><td>公交</td><td>K51 / K56 / K2 / K48 等到「千佛山」站（经十路北门）</td><td>约 30–40 分钟</td></tr>
-</table>
-<p class="lead">山内可徒步或坐索道上山，不骑车完全没问题。</p>
-</section><section class="card" id="day3">
-<h2><span class="no">5</span>Day3 山东博物馆 <span class="tag blue">城东</span></h2>
-<p class="ref">10月3日｜三号订的票，历下区经十路东段</p>
-<p class="lead">山东博物馆在城东经十路东段，藏有甲骨、汉画像石、龙山文化蛋壳黑陶等鲁地重器，慢慢逛约半天。</p>
-<ul>
-<li><strong>预约</strong>：免费但需公众号分时段预约，节假日提前 7 天抢；入馆刷身份证。</li>
-<li><strong>十大镇馆之宝</strong>——基本都在二层 6–9 号厅（红陶兽形壶、蛋壳黑陶杯、亚醜钺、颂簋、鲁国大玉璧、甲骨文、银雀山汉简、东平汉墓壁画、九旒冕、郑燮双松图）。</li>
-<li><strong>讲解</strong>：讲解器 20 元，靠近文物自动感应。</li>
-<li><strong>吃饭</strong>：馆内无餐饮，午饭去东边万象城。</li>
-</ul>
-<h3>交通怎么去（单点，城东较远）</h3>
-<table>
-<tr><th>方式</th><th>路线</th><th>大约时间</th></tr>
-<tr><td><strong>打车（推荐）</strong></td><td>直接到山东博物馆</td><td>约 30–40 分钟</td></tr>
-<tr><td>地铁</td><td>2 号线北园站 → 八涧堡换 3 号线 → 奥体中心站（D 口出步行约 1600 米，或换 4 号线到「山东博物馆」站 B 口出）</td><td>约 50 分钟</td></tr>
-</table>
-<p class="lead">博物馆在城东经十路东段，离家最远，不想折腾换乘就直接打车。</p>
-</section><section class="card" id="day4">
-<h2><span class="no">6</span>Day4 老商埠 Citywalk <span class="tag amber">重点</span></h2>
-<p class="ref">10月4日｜老商埠在市中区/槐荫区（城西），以经纬路为骨架，一天正合适</p>
-<p class="lead">1904 年济南自开商埠后留下的百年建筑群，近年又加了大量网红打卡点，新旧碰撞，适合慢慢走。</p>
-<div class="callout amber">
-<div class="title">交通怎么去（区内全程步行，不用骑车）</div>
-<p class="lead" style="margin:0"><strong>住处 → 老商埠</strong>：打车约 15–20 分钟，定位「融汇济南老商埠」或「星巴克老商埠店」；公交 K101 / K58 / K92 等到「经四纬三」站，或 508 路小巷公交「济南老商埠」站，约 30 分钟。<br/><strong>老商埠区内</strong>：艺术中心、经二路老建筑、商埠文化博物馆、中山公园彼此就几百米，全程步行串联。</p>
-</div>
-<h3 id="day4-c1">6.1 先分清两个「艺术中心」</h3>
-<div class="callout red">
-<div class="title">别跑错地方</div>
-<p class="lead" style="margin:0"><strong>✅ 老商埠艺术中心</strong>——原英美烟草公司旧址（经四路与小纬二路交叉口），蓬皮杜中心主题店山东首店，<strong>这个才在老商埠里面</strong>。<br/><strong>❌ 时光艺术之城</strong>——在济南西站（槐荫区西客站），跟老商埠完全不在一个方向。</p>
-</div>
-<ol>
-<li><strong>老商埠艺术中心</strong>（经四路小纬二路口，蓬皮杜主题店）——一楼文创/书吧/咖啡免费逛，二楼艺术展（首展「天才的绮迹」：野兽派到包豪斯，马蒂斯、康定斯基作品；是否收费现场确认）。</li>
-<li><strong>经二路老建筑群</strong>——沿街一路逛（见下方清单）。</li>
-<li><strong>商埠文化博物馆</strong>（经四路，德式建筑）。</li>
-<li><strong>融汇老商埠</strong>（经三路）——张采丞故居 + 咖啡餐饮，顺便午饭。</li>
-<li><strong>网红打卡点</strong>——爱心红绿灯 + 爱心斑马线（经三纬三路口）、济南大字墙（10 号楼旁）、夹心胡同 + 巨型漂浮爱心（9–14 号楼间）、玫瑰瀑布（张采丞故居外墙）。</li>
-<li>有空再去 <strong>中山公园</strong>（纬五路往南）。</li>
-</ol>
-<h3 id="day4-c2">6.2 经二路老建筑群</h3>
-<table>
-<tr><th>建筑</th><th>看点</th></tr>
-<tr><td><strong>德华银行旧址</strong></td><td>1901 年，德式巴洛克，济南保存最完好的德式建筑</td></tr>
-<tr><td><strong>邮政大楼</strong></td><td>1919 年，西洋古典式，商埠区标志性建筑</td></tr>
-<tr><td><strong>瑞蚨祥绸布店</strong></td><td>1923 年，中华老字号，第一面五星红旗面料出处</td></tr>
-<tr><td><strong>宏济堂历史博物馆</strong></td><td>1920 年，中西合璧，中医药博物馆，免费开放</td></tr>
-<tr><td><strong>阜成信东记</strong></td><td>老棉花行，现改茶社</td></tr>
-</table>
-</section><section class="card" id="food">
-<h2><span class="no">7</span>必吃美食 <span class="tag amber">吃</span></h2>
-<p class="ref">济南最硬的几样，走到哪吃到哪</p>
-<table>
-<tr><th>美食</th><th>说明</th></tr>
-<tr><td><strong>把子肉</strong></td><td>最硬核平民美食。超意兴（性价比，人均 15，全城连锁）；老兵（老店风味，人均 30，经六路总店）；武岳庙（深夜食堂）、刘小忙（2025 必吃榜）</td></tr>
-<tr><td><strong>甜沫</strong></td><td>咸口糊糊粥，配油旋当早餐</td></tr>
-<tr><td><strong>油旋</strong></td><td>外酥里嫩螺旋烧饼，非遗（油旋张、聚丰德）</td></tr>
-<tr><td><strong>九转大肠 / 糖醋鲤鱼</strong></td><td>鲁菜代表（会仙楼、燕喜堂）</td></tr>
-<tr><td><strong>酥锅 / 泉水爆肚</strong></td><td>芙蓉街特色：酥锅慢火煨，泉水爆肚蘸麻酱</td></tr>
-<tr><td><strong>芙蓉街小吃</strong></td><td>章丘烤肉卷、泉水茶汤、卫巷快餐（人均 30）</td></tr>
-<tr><td><strong>老商埠 / 大观园</strong></td><td>杏一豆腐、华祥食品（伴手礼）、小青岛米线、义新铁锅炖</td></tr>
-<tr><td><strong>羊汤馆</strong></td><td>济南本地另一大类别，大明湖/趵突泉附近有宝藏老店</td></tr>
-</table>
-<div class="callout green">
-<div class="title">地道吃法 & 避坑</div>
-<p class="lead" style="margin:0">想吃得地道：早市去<strong>民族大街市场</strong>（甜沫、炸茄盒），大明湖附近<strong>县西巷/县东巷</strong>藏着本地老店；芙蓉街小吃同质化、偏贵。<strong>别信出租车司机推荐的店</strong>（拿回扣），别买景区门口「泉水大碗茶」（贵且淡）。</p>
-</div>
-</section><section class="card" id="tips">
-<h2><span class="no">8</span>实用信息 <span class="tag green">Tips</span></h2>
-<ul>
-<li><strong>泉水</strong>：黑虎泉、五龙潭的泉水可免费直饮。</li>
-<li><strong>交通</strong>：核心景区集中在市中心，公交 + 地铁 + 打车 + 步行即可，老城区景点之间步行可达。</li>
-<li><strong>季节</strong>：春秋最佳（3–5 月、9–11 月），夏热但泉水清凉，冬天雪后最有意境。</li>
-<li><strong>周边备选</strong>：明水古城（章丘）、红叶谷（秋赏枫）可 Day4 换花样；晚上可去环联夜市（本地人常去）。</li>
-<li><strong>视频攻略</strong>：B 站搜「小垚旅行记」「阿眯sn」「大明湖畔磊子哥」的济南攻略（本地人整理、播放量高）。</li>
-</ul>
-</section></main><script>
-(function () {
-  var links = document.querySelectorAll('#toc a[href^="#"]');
-  var map = {};
-  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
-  var targets = [];
-  document.querySelectorAll('[id]').forEach(function (el) {
-    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
-      var a = map[el.id];
-      if (a) targets.push({ el: el, a: a });
-    }
-  });
-  if (!targets.length) return;
-  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
-  var obs = new IntersectionObserver(function (entries) {
-    entries.forEach(function (en) {
-      if (!en.isIntersecting) return;
-      clearActive();
-      var a = map[en.target.id];
-      if (a) a.classList.add('active');
-    });
-  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
-  targets.forEach(function (t) { obs.observe(t.el); });
-})();
-</script></body></html>
+      <h2>实用信息</h2>
+      <ul>
+        <li>泉水可免费直饮（黑虎泉、五龙潭）</li>
+        <li>交通：老城区步行，跨城区打车/地铁/公交，全程不骑车</li>
+        <li>周边备选：明水古城（章丘）、红叶谷、环联夜市</li>
+        <li>最佳季节：春秋（3–5 月、9–11 月）</li>
+      </ul>
+    </article>
+  </div>
+</body>
+</html>
