@@ -63,5 +63,12 @@ const NOTES = [
     category: "AI Tools",
     url: "notes/2026-09-30-iPhone连Mac跑ClaudeCode.html",
     desc: "Tailscale + SSH + tmux + disablesleep 四件套，异地用 iPhone 连回 Mac 跑 Claude Code 的完整方案与踩坑"
+  },
+  {
+    title: "济南四日游攻略",
+    date: "2026-10-01",
+    category: "旅行",
+    url: "notes/2026-10-01-济南四日游攻略.html",
+    desc: "以明湖四季为起点的济南四日串线：趵突泉、山东博物馆、千佛山、老商埠，附美食与避坑"
   }
 ];
