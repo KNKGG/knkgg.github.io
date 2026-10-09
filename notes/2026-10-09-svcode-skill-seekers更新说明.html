@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>svcode-skill-seekers 更新：从扁平解析到跨文件层次树</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+#toc .lvl3 { font-size: 0.78rem; padding-left: 2.4rem; color: var(--ink-mute); }
+
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+  scroll-margin-top: 1.5rem;
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+pre code .kw   { color: #1E3A8A; font-weight: 600; }
+pre code .str  { color: #C04E1A; }
+pre code .num  { color: #9a6a00; }
+pre code .type { color: #5b3fbf; }
+pre code .cmt  { color: #3f6b4f; }
+
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.7rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.92rem; color: var(--ink); font-weight: 600; line-height: 1.5; }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.25rem; line-height: 1.55; }
+.layer .desc code, .layer .name code { color: var(--accent); }
+.layer.m1 { border-color: #E6B3C2; background: #FAEDF2; }
+.layer.m2 { border-color: #E7C0AC; background: #FAF0E8; }
+.layer.m3 { border-color: #B5CFBC; background: #EFF6F1; }
+.layer.m4 { border-color: #B0C6DE; background: #EEF4F9; }
+
+.vflow { display: flex; flex-direction: column; align-items: center; }
+.vflow > .layer, .vflow > .split { width: 100%; max-width: 480px; }
+.vflow .link {
+  position: relative; width: 2px; height: 40px; flex: none;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+}
+.vflow .link::after {
+  content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent; border-right: 6px solid transparent;
+  border-top: 9px solid var(--accent-2);
+}
+
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout.red    { border-left-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul>
+<li><a class="lvl1" href="#why">1. 更新解决了什么</a><ul></ul></li>
+<li><a class="lvl1" href="#roadmap">2. 版本演进：两张「层」</a><ul></ul></li>
+<li><a class="lvl1" href="#layer1">3. 第一层：给实例化补「面」</a><ul>
+<li><a class="lvl2" href="#layer1-port">3.1 端口连接：命名 vs 位置</a><ul></ul></li>
+<li><a class="lvl2" href="#layer1-param">3.2 参数覆盖 #(.W(16))</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#layer2">4. 第二层：跨文件层次树</a><ul>
+<li><a class="lvl2" href="#layer2-index">4.1 全局容器索引</a><ul></ul></li>
+<li><a class="lvl2" href="#layer2-tree">4.2 两类关系，两种树</a><ul></ul></li>
+<li><a class="lvl2" href="#layer2-align">4.3 位置连接还原端口名</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#edge">5. 三个诚实边界</a><ul></ul></li>
+<li><a class="lvl1" href="#measure">6. 实测与量级</a><ul></ul></li>
+</ul></nav></aside><main class="content"><header class="hero">
+<h1>svcode-skill-seekers 更新：从扁平解析到跨文件层次树</h1>
+<div class="sub">之前只能告诉你「每个文件里有哪些类和方法」，现在能回答「DUT 的模块层次长什么样」「这个类往上继承谁」——两层演进把验证工程师最常 grep 的两件事做成了开箱即用的索引</div>
+<div class="meta">
+  版本：<code>v0.2.0</code> → <code>v0.4.0</code> ·
+  源码 <code>~/svcode-skill-seekers/</code> ·
+  解析器 <code>tree-sitter-systemverilog</code> ·
+  信息截至 2026-10
+</div>
+</header><section class="card" id="why">
+<h2><span class="no">1</span>更新解决了什么<span class="tag blue">动机</span></h2>
+<p class="ref">把「文件内扁平信息」升级成「跨文件层次视图」</p>
+<p class="lead"><strong>上一版（v0.2.0）已经把「单个文件里有什么」做全了</strong>——9 类顶层容器（module / interface / program / package / class / interface_class / checker / config / primitive）+ 7 类嵌套，每个 module 的 <code>instances</code> 也带上了 <code>{type, name}</code>。</p>
+<p>但那些 <code>instances[].type</code> 只是<strong>孤立的字符串</strong>：它告诉你 <code>top</code> 里实例化了一个 <code>fifo</code>，却不告诉你这个 <code>fifo</code> 定义在哪个文件、它自己又实例化了什么。想查「DUT 层次」或「TB 类继承」，只能打开多个文件手动 grep 拼。</p>
+<p>这一版补的就是这块空白：<strong>建立跨文件的全局层次视图</strong>，覆盖三类容器、两类关系：</p>
+<ul>
+<li><strong>实例化关系</strong>（module + interface）：<code>instances[].type</code> → 链接到被实例容器定义，递归成树；</li>
+<li><strong>继承关系</strong>（class + interface_class）：<code>base_classes[]</code> → 链接到基类定义，成继承链；</li>
+<li><strong>端口对齐</strong>：位置连接 <code>(clk, rst_n, count)</code> 的第 N 项 → 被实例模块定义 ports 的第 N 个端口名，补全 <code>name</code>。</li>
+</ul>
+<div class="analogy">
+<div class="lbl">一句话对比</div>
+<p style="margin:6px 0 0"><strong>之前</strong>：一张张互不相连的「零件清单」，每张只写自己这间屋子里有什么。</p>
+<p style="margin:6px 0 0"><strong>现在</strong>：一份「装配图」+「族谱」，从顶层往下能递归看到谁装了谁，从子类往上能追到根类。</p>
+</div>
+</section><section class="card" id="roadmap">
+<h2><span class="no">2</span>版本演进：两张「层」<span class="tag purple">路线</span></h2>
+<p class="ref">0.2.0 打底子，0.3.x 补「面」，0.4.0 补「体」</p>
+<table>
+<tr><th>版本</th><th>做的事</th><th>性质</th></tr>
+<tr><td><code>0.2.0</code></td><td>支持所有 SystemVerilog 容器类型（9 顶层 + 7 嵌套），tree-sitter 真实 AST</td><td>容器类型打底</td></tr>
+<tr><td><code>0.3.0</code></td><td>schema 从 <code>classes</code> 重构为 <code>containers</code>，为多容器类型让路</td><td>数据结构</td></tr>
+<tr><td><code>0.3.5</code></td><td>第一层：实例化的「面」——端口连接 + 参数覆盖</td><td>文件内信息补全</td></tr>
+<tr><td><code>0.4.0</code></td><td>第二层：实例化的「体」——跨文件层次树 + 继承链 + 端口对齐</td><td>跨文件关系</td></tr>
+</table>
+<p>「层」这个说法是从验证的角度借来的：<strong>第一层解决「一个实例化长什么样」（面），第二层解决「这个实例化在整个 DUT 里处于什么位置、连到谁」（体）。</strong>两层合起来，才把一个 <code>instances[].type</code> 字符串，从「名字」变成「图上的一个节点」。</p>
+</section><section class="card" id="layer1">
+<h2><span class="no">3</span>第一层：给实例化补「面」<span class="tag green">0.3.5</span></h2>
+<p class="ref">一个 module 实例化，除了名字，还有参数和端口这两样「面」信息</p>
+<p class="lead">早期 <code>_instances</code> 只提取 <code>{type, name}</code>——知道实例化了什么、叫什么，却不知道<strong>参数怎么覆盖、端口怎么连</strong>。第一层补的就是这两样。</p>
+<h3 id="layer1-port">3.1 端口连接：命名 vs 位置</h3>
+<p>SV 端口连接有两种写法，语义完全不同：</p>
+<pre><code><span class="cmt">// 命名连接：端口名显式写出来，和顺序无关</span>
+fifo u_fifo(.clk(clk), .rst_n(rst_n), .din(d), .dout(d));
+
+<span class="cmt">// 位置连接：只写表达式，按端口声明顺序对应</span>
+fifo u_fifo(clk, rst_n, d, d);</code></pre>
+<p>提取时两者分开处理：命名连接直接拿到端口名 <code>.clk(...)</code> → <code>name="clk"</code>；位置连接没有名字，暂时记 <code>name=null</code>，只留 <code>connection</code> 表达式——<strong>位置连接的端口名要等第二层「对齐」才能补上</strong>（见 4.3）。</p>
+<h3 id="layer1-param">3.2 参数覆盖 #(.W(16))</h3>
+<p>参数覆盖 <code>#(.W(16), .DEPTH(8))</code> 也一样，从 <code>parameter_value_assignment</code> 节点里把每个 <code>命名参数 = 值</code> 对抽出来：</p>
+<pre><code>counter #(.W(8)) u_count (clk, rst_n, d);
+<span class="cmt">// → params = [{"name": "W", "value": "8"}]</span></code></pre>
+<p>这样 <code>instances</code> 从扁平的 <code>{type, name}</code> 变成了 <code>{type, name, params, ports}</code>——「面」的信息齐了。</p>
+</section><section class="card" id="layer2">
+<h2><span class="no">4</span>第二层：跨文件层次树<span class="tag blue">0.4.0 · 核心</span></h2>
+<p class="ref">新增 hierarchy.py，把散在各文件的容器串成图</p>
+<h3 id="layer2-index">4.1 全局容器索引</h3>
+<p>跨文件链接的第一步，是把所有文件的所有容器汇总成一个索引：</p>
+<pre><code><span class="cmt"># index[(kind, name)] -> [(file, container), ...]  # list 因为可能重名</span>
+<span class="cmt"># 纳入的 kind：module / interface（实例化侧）；class / interface_class（继承侧）</span></code></pre>
+<p>有了它，<code>instances[].type</code> 和 <code>base_classes[]</code> 这些「名字」就能查到「定义在哪个文件、长什么样」，从字符串变成指针。</p>
+<h3 id="layer2-tree">4.2 两类关系，两种树</h3>
+<p>第二层解析两类引用关系，分别构树：</p>
+<ul>
+<li><strong>实例化树</strong>（module + interface）：根 = 索引里<strong>没有被任何实例引用</strong>的容器（多顶层时 DUT top 和 TB top 并列）；从根递归展开，<code>visited</code> 集合防环；悬空实例（外部 IP）作为叶子标 <code>(external)</code>。</li>
+<li><strong>继承</strong>（class + interface_class）：每条 <code>extends</code> 链向上追到根（或 <code>uvm_object</code>），同时按基类分组出「向下」的直接子类列表。</li>
+</ul>
+<pre><code><span class="cmt"># 实例化树渲染结果（references/hierarchy.md）</span>
+top (module) [top.sv]
+├─ u_count : counter (module)  [counter.sv]
+├─ u_fifo  : fifo (module)    [fifo.sv]
+│   └─ u_sram : sram (module) [sram.sv]
+├─ bus_i   : bus_if (interface) [bus_if.sv]
+└─ u_ext   : external_ip  (external)
+
+<span class="cmt"># 继承链</span>
+my_driver → uvm_driver → uvm_component → uvm_object → uvm_void</code></pre>
+<h3 id="layer2-align">4.3 位置连接还原端口名</h3>
+<p>第一层留下的 <code>name=null</code> 位置连接，这里按顺序对齐到被实例模块的定义端口：<strong>第 N 个位置连接 → 定义 ports 的第 N 个端口名</strong>。</p>
+<pre><code>counter #(.W(8)) u_count (clk, rst_n, d);
+<span class="cmt">// counter 定义 ports = [clk, rst_n, count]
+// 位置连接对齐后：
+//   (clk, rst_n, d) → clk / rst_n / count</span></code></pre>
+<p>端口数不匹配时，超出部分保持 <code>name=null</code> 并标 <code>unmatched</code>。对齐结果直接写回 <code>instances[].ports[].name</code>，所以 <code>code_analysis.json</code> 里也能看到补全后的端口名。</p>
+<p>引用解析结果分三类落账：<strong>resolved</strong>（唯一命中）/ <strong>ambiguous</strong>（重名多个候选）/ <strong>unresolved</strong>（找不到，外部 IP）。后两类单独列在 hierarchy 报告里，不硬塞进树。</p>
+<div class="callout green">
+<div class="title">输出三件套</div>
+<p class="lead" style="margin:0"><code>code_analysis.json</code> 顶层多一个 <code>hierarchy</code> 字段（结构化底稿）→ <code>references/hierarchy.md</code>（完整树，Claude 按需读）→ <code>SKILL.md</code> 加「层次概览」小节（顶层模块、树数、继承根）。查层次读一个文件即可，不用再 grep。</p>
+</div>
+</section><section class="card" id="edge">
+<h2><span class="no">5</span>三个诚实边界<span class="tag red">坑</span></h2>
+<p class="ref">tree-sitter 给的是语法树，不是语义；有些东西它分不出来，这些是已知边界</p>
+<h3>5.1 scoped 基类：<code>uvm_pkg::uvm_packer</code></h3>
+<p>UVM 的 compat 层里有 <code>class uvm_compat_packer extends uvm_pkg::uvm_packer;</code>——基类是「作用域限定名」。初版 <code>_class_base</code> 只取第一个 <code>simple_identifier</code>，会错取成 <code>uvm_pkg</code>（那是 package 不是 class）。</p>
+<p>修法：取 class_type 里<strong>最后一个</strong> <code>simple_identifier</code>（scoped 名的末段），同时参数化基类 <code>extends uvm_driver #(T)</code> 里的参数在深层 <code>parameter_value_assignment</code>、不是直接子节点，不受影响。修完 <code>uvm_compat_packer</code> 的链从错误的 <code>[..., uvm_pkg]</code> 变成正确的 <code>[uvm_compat_packer, uvm_packer, uvm_policy, uvm_object, uvm_void]</code>。</p>
+<h3>5.2 参数化继承：<code>extends BASE</code></h3>
+<p><code>class uvm_reg_sequence #(type BASE=uvm_sequence) extends BASE;</code> 和 <code>virtual class uvm_port_base #(type IF=uvm_void) extends IF;</code> 里，<code>BASE</code> / <code>IF</code> 是 type 参数，不是真实类名。tree-sitter 只能告诉你是 <code>extends BASE</code>，无法静态解析出 BASE 到底被绑成哪个类——<strong>这是参数化继承的固有边界</strong>，继承链会如实停在 <code>BASE</code> 这一层，标注清楚，不假装解析。</p>
+<h3>5.3 增量 update 的端口对齐「陈旧」</h3>
+<p>端口对齐结果写进 <code>ports[].name</code> 持久化后，位置连接原本 <code>name=null</code> 的语义被覆盖了。于是增量 <code>update</code> 时，如果被实例模块改了端口名、而实例文件本身没变（位置连接本来就不用改调用方代码），复用的旧文件会带着<strong>旧端口名</strong>。</p>
+<p>修法：第一层给位置连接打 <code>positional: true</code> 标记，对齐前先把这些项的 name 还原为 null 再重算——<strong>幂等可重算</strong>，增量重跑永远对齐到最新定义端口。这也顺带让旧数据（无标记、<code>name=null</code>）靠 <code>name is None</code> 兜底，向后兼容。</p>
+</section><section class="card" id="measure">
+<h2><span class="no">6</span>实测与量级<span class="tag amber">验证</span></h2>
+<p class="ref">拿 UVM 标准库跑回归，顺带估了一下 skill 大小随 DUT 复杂度的增长</p>
+<h3>6.1 UVM 库回归</h3>
+<p>对 <code>1800.2-2020.3.1</code>（145 文件、359 class、2778 方法）跑第二层：</p>
+<table>
+<tr><th>指标</th><th>结果</th></tr>
+<tr><td>class 提取</td><td>359 个，全覆盖（与上一版一致，没破坏既有提取）</td></tr>
+<tr><td>继承链</td><td>359 条，平均深度 3.3，最大深度 7</td></tr>
+<tr><td>基类分组（by_base）</td><td>71 个基类</td></tr>
+<tr><td>unresolved / ambiguous</td><td>0 / 0（库内部完整）</td></tr>
+<tr><td>实例化树</td><td>0 棵（纯 class 库，无 module 实例化，符合预期）</td></tr>
+</table>
+<h3>6.2 skill 大小随复杂度的增长</h3>
+<p>一个常被问的问题：DUT 越复杂，skill 会不会爆炸。实测结论是<strong>线性增长 O(N)</strong>，N ≈ 容器 + 方法 + 端口 + 信号 + 实例化总数，没有平方项。主导项不是 markdown，而是 <code>code_analysis.json</code>（占 ~72%）——它是全量结构化数据，JSON 字段重复 + 缩进带来 ~1.5–2× 冗余。</p>
+<p>放大系数取决于 <strong>docstring 密度，而非代码量本身</strong>——工具只存签名 + 结构 + docstring，<strong>不存实现体</strong>：</p>
+<ul>
+<li>文档密集的 class 库（UVM）：skill ≈ 源码的 <strong>1.25×</strong>（145 文件 → 3.4 MB）；</li>
+<li>实现密集、注释稀少的 RTL：放大系数更低，单个典型 module 实测 json 约几 KB；</li>
+<li>实际验证 DUT 是 block / 子系统级（几百 module），skill 落在<strong>几 MB 到几十 MB</strong>，可控；完整 SoC（几万 module）不建议整建，按 block 拆。</li>
+</ul>
+<div class="callout amber">
+<div class="title">一句话总结</div>
+<p class="lead" style="margin:0">这一版把 svcode-skill-seekers 从「文件内解析器」升级成「跨文件索引器」——第一层补实例化的面（端口/参数），第二层建实例化的体（层次树/继承链/端口对齐）。验证工程师查 DUT 层次和 TB 继承，终于不用再 grep 多文件手动拼了。</p>
+</div>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>

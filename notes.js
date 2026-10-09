@@ -70,5 +70,12 @@ const NOTES = [
     category: "旅行",
     url: "notes/2026-10-01-济南四日游攻略.html",
     desc: "以明湖四季为起点的济南四日串线：趵突泉、山东博物馆、千佛山、老商埠，附美食与避坑"
+  },
+  {
+    title: "svcode-skill-seekers 更新：从扁平解析到跨文件层次树",
+    date: "2026-10-09",
+    category: "AI Tools",
+    url: "notes/2026-10-09-svcode-skill-seekers更新说明.html",
+    desc: "自建工具 0.2.0→0.4.0 两层演进：第一层把 SV/UVM 源码解析成统一容器模型，第二层建立跨文件实例化/继承层次树与端口对齐，附三个诚实边界与 skill 大小量级评估"
   }
 ];
