@@ -84,5 +84,12 @@ const NOTES = [
     category: "计算机概念",
     url: "notes/2026-10-15-docker-wsl2-rancher入门.html",
     desc: "从容器是什么讲到 Windows 跑 Docker 的完整链路：镜像/容器/仓库、Rancher Desktop 架构、WSL2 的服务与 VM 分工，以及控制平面/数据平面辨析"
+  },
+  {
+    title: "软件的角色图谱 · 从操作系统到微码",
+    date: "2026-10-15",
+    category: "计算机概念",
+    url: "notes/2026-10-15-软件角色图谱.html",
+    desc: "给硬件工程师的软件地层说明书：三把尺子定位角色，操作系统/库/框架/工具/服务五角色，加微码/固件/驱动/运行时/Hypervisor/中间件/协议等扩展角色，并以 Python 全链路实战串讲"
   }
 ];
