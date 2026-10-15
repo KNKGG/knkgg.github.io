@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>Docker · WSL2 · Rancher Desktop · 入门</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+#toc .lvl3 { font-size: 0.78rem; padding-left: 2.4rem; color: var(--ink-mute); }
+
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3, h4 {
+  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
+  scroll-margin-top: 1.5rem;
+}
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+pre code .kw   { color: #1E3A8A; font-weight: 600; }
+pre code .str  { color: #C04E1A; }
+pre code .num  { color: #9a6a00; }
+pre code .type { color: #5b3fbf; }
+pre code .cmt  { color: #3f6b4f; }
+
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.7rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.92rem; color: var(--ink); font-weight: 600; line-height: 1.5; }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.25rem; line-height: 1.55; }
+.layer .desc code, .layer .name code { color: var(--accent); }
+.layer.blue   { border-color: var(--accent);   background: color-mix(in oklab, var(--accent), transparent 95%); }
+.layer.orange { border-color: var(--accent-2); background: color-mix(in oklab, var(--accent-2), transparent 95%); }
+.layer.green  { border-color: var(--green);    background: color-mix(in oklab, var(--green), transparent 94%); }
+.layer.m1 { border-color: #E6B3C2; background: #FAEDF2; }
+.layer.m2 { border-color: #E7C0AC; background: #FAF0E8; }
+.layer.m3 { border-color: #B5CFBC; background: #EFF6F1; }
+.layer.m4 { border-color: #B0C6DE; background: #EEF4F9; }
+
+.vflow { display: flex; flex-direction: column; align-items: center; }
+.vflow > .layer, .vflow > .split { width: 100%; max-width: 480px; }
+.vflow .link {
+  position: relative; width: 2px; height: 40px; flex: none;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+}
+.vflow .link::after {
+  content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent; border-right: 6px solid transparent;
+  border-top: 9px solid var(--accent-2);
+}
+
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout.red    { border-left-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul>
+<li><a class="lvl1" href="#docker">1. Docker 是什么</a><ul>
+<li><a class="lvl2" href="#docker-c1">1.1 一句话本质</a><ul></ul></li>
+<li><a class="lvl2" href="#docker-c2">1.2 三个核心概念：镜像 / 容器 / 仓库</a><ul></ul></li>
+<li><a class="lvl2" href="#docker-c3">1.3 容器 vs 虚拟机</a><ul></ul></li>
+<li><a class="lvl2" href="#docker-c4">1.4 常用命令</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#rancher">2. Rancher Desktop：Windows 上的容器引擎</a><ul>
+<li><a class="lvl2" href="#rancher-c1">2.1 为什么需要它</a><ul></ul></li>
+<li><a class="lvl2" href="#rancher-c2">2.2 架构：CLI → VM → dockerd</a><ul></ul></li>
+<li><a class="lvl2" href="#rancher-c3">2.3 配置与 CLI</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#stack">3. 环境分层全貌</a><ul>
+<li><a class="lvl2" href="#stack-c1">3.1 自下而上五层</a><ul></ul></li>
+<li><a class="lvl2" href="#stack-c2">3.2 一次 docker run 的旅程</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#wsl2">4. WSL2 是什么</a><ul>
+<li><a class="lvl2" href="#wsl2-c1">4.1 一句话本质</a><ul></ul></li>
+<li><a class="lvl2" href="#wsl2-c2">4.2 WSL1 vs WSL2</a><ul></ul></li>
+<li><a class="lvl2" href="#wsl2-c3">4.3 架构：服务与 VM</a><ul></ul></li>
+<li><a class="lvl2" href="#wsl2-c4">4.4 常用命令</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#wsl2-rancher">5. WSL2 与 Rancher 的关系</a><ul>
+<li><a class="lvl2" href="#wsl2-rancher-c1">5.1 三个 WSL2 发行版</a><ul></ul></li>
+<li><a class="lvl2" href="#wsl2-rancher-c2">5.2 Windows 如何连上 VM 里的 dockerd</a><ul></ul></li>
+</ul></li>
+<li><a class="lvl1" href="#service">6. 关键辨析：WSL2 是「Windows 的服务」吗</a><ul>
+<li><a class="lvl2" href="#service-c1">6.1 这个说法为什么不准确</a><ul></ul></li>
+<li><a class="lvl2" href="#service-c2">6.2 控制平面 vs 数据平面</a><ul></ul></li>
+<li><a class="lvl2" href="#service-c3">6.3 修正后的心智模型</a><ul></ul></li>
+</ul></li>
+</ul></nav></aside><main class="content"><header class="hero">
+<h1>Docker · WSL2 · Rancher Desktop · 入门</h1>
+<div class="sub">从「容器是什么」讲到「为什么 Windows 上的 Docker 底下藏着一个 Linux 虚拟机」——把 Windows 跑 Docker 这条链路的每一层都拆开看清楚</div>
+<div class="meta">
+  环境：<code>Windows 11</code> · <code>Rancher Desktop v1.24.0</code>（WSL2 后端）·
+  实例：<code>hindsight</code> 容器（端口 8888 / 9999）·
+  信息截至 2026-10
+</div>
+</header><section class="card" id="docker">
+<h2><span class="no">1</span>Docker 是什么 <span class="tag blue">概念</span></h2>
+<p class="ref">先讲清「容器」这个最底层的东西，后面 WSL2、Rancher 都是为了让它能在 Windows 上跑起来</p>
+<h3 id="docker-c1">1.1 一句话本质</h3>
+<p class="lead"><strong>Docker 是一套「打包 + 运行」程序的技术：把程序连同它依赖的一切（库、配置、环境变量）打进一个自包含的盒子，在任何装了 Docker 的机器上都能原样跑起来。</strong> 它解决的核心痛点是「在我机器上好好的，到你机器上就跑不起来」——因为环境不一致。</p>
+<p>传统部署里，你装的软件依赖一堆系统库、特定版本的 Python、特定的环境变量。换台机器就得重来一遍，还可能因为系统版本不同失败。Docker 把这些统统装进盒子里，盒子一到，程序和它的小世界一起来了。</p>
+<h3 id="docker-c2">1.2 三个核心概念：镜像 / 容器 / 仓库</h3>
+<table>
+<tr><th>概念</th><th>是什么</th><th>类比</th></tr>
+<tr><td><strong>镜像</strong> <code>image</code></td><td>只读模板，打包好的程序 + 依赖，分「层」堆叠</td><td>一张装系统用的 GHOST 光盘</td></tr>
+<tr><td><strong>容器</strong> <code>container</code></td><td>镜像跑起来的实例，在只读镜像上加一层可写层</td><td>用光盘装出来的、正在运行的电脑</td></tr>
+<tr><td><strong>仓库</strong> <code>registry</code></td><td>存放和分发镜像的地方（如 Docker Hub、ghcr.io）</td><td>App Store / 应用市场</td></tr>
+</table>
+<p>关键点：<strong>一个镜像可以跑出很多个容器</strong>，彼此隔离；容器里改的东西写在「可写层」，不污染镜像本身。所以同一镜像开 10 个容器互不影响，删掉容器镜像还在。</p>
+<div class="analogy">
+<div class="lbl">类比</div>
+<p style="margin:6px 0 0">镜像 = 做蛋糕的模具；容器 = 用模具烤出来的一块蛋糕。同一模具能烤无数块蛋糕，每块上想单独裱花（可写层）都不影响别的。</p>
+</div>
+<h3 id="docker-c3">1.3 容器 vs 虚拟机</h3>
+<p>很多人第一反应是「容器不就是轻量虚拟机吗」——不是。最大的区别在<strong>内核</strong>：</p>
+<table>
+<tr><th>维度</th><th>虚拟机</th><th>容器</th></tr>
+<tr><td>内核</td><td>每个 VM 带自己的<strong>完整操作系统内核</strong></td><td><strong>共享宿主的内核</strong>，只打包应用和依赖</td></tr>
+<tr><td>体积</td><td>GB 级（含整套系统）</td><td>MB～百 MB 级</td></tr>
+<tr><td>启动</td><td>几十秒（要启动整个系统）</td><td>亚秒级（就是一个进程）</td></tr>
+<tr><td>隔离</td><td>硬件级，最彻底</td><td>进程级（namespace + cgroup），够用</td></tr>
+</table>
+<p>正因为共享内核，<strong>Linux 容器本质是 Linux 的进程</strong>——这也是为什么 Windows 上跑 Linux 容器必须先有一个 Linux 内核可用（后面 WSL2 的用武之地）。</p>
+<h3 id="docker-c4">1.4 常用命令</h3>
+<pre><code><span class="cmt"># 镜像</span>
+docker pull nginx:latest          <span class="cmt"># 从仓库拉镜像</span>
+docker images                     <span class="cmt"># 列出本地镜像</span>
+
+<span class="cmt"># 容器：run = create + start（一条命令建好并启动）</span>
+docker run -d --name web -p 8080:80 nginx
+<span class="cmt">#        │   │         │           │</span>
+<span class="cmt">#        │   │         │           └─ 用的镜像</span>
+<span class="cmt">#        │   │         └─ 端口映射 宿主:容器</span>
+<span class="cmt">#        │   └─ 起个名字</span>
+<span class="cmt">#        └─ 后台运行（detach）</span>
+
+docker ps                         <span class="cmt"># 看正在跑的容器（-a 含已停的）</span>
+docker stop web && docker start web
+docker logs -f web                <span class="cmt"># 跟踪日志（-f 实时刷新）</span>
+docker exec -it web bash          <span class="cmt"># 进容器里开个 shell</span>
+docker rm -f web                  <span class="cmt"># 强制删除容器</span></code></pre>
+<div class="callout">
+<div class="title">两个高频参数</div>
+<p><strong><code>-p 宿主:容器</code></strong>：把容器内的端口暴露到宿主。比如 <code>-p 8888:8888</code> 表示「宿主 8888 → 容器 8888」，你在 Windows 里访问 <code>localhost:8888</code> 才能打到容器里。</p>
+<p><strong><code>-v 卷:挂载点</code></strong>：把数据存到容器外部，容器删了数据还在。这就是「具名卷」——不写宿主路径时 Docker 自己管理一块空间。</p>
+</div>
+</section><section class="card" id="rancher">
+<h2><span class="no">2</span>Rancher Desktop：Windows 上的容器引擎 <span class="tag green">工具</span></h2>
+<p class="ref">Docker 本身是 Linux 技术，Windows 要跑它得有个「翻译层」——Rancher Desktop 就是干这个的</p>
+<h3 id="rancher-c1">2.1 为什么需要它</h3>
+<p>Docker 引擎（<code>dockerd</code>）是为 Linux 写的，它依赖 Linux 内核的 namespace、cgroup 等能力。Windows 内核里没有这些，所以<strong>必须有一台 Linux 在底下撑着</strong>。Rancher Desktop 做的事就是：在你 Windows 上自动准备一台 Linux 环境、在里面跑起 Docker 引擎，再把 Windows 侧的 <code>docker</code> 命令接到那台 Linux 上。</p>
+<p>它的定位是「免费、开源、带图形界面的 Docker Desktop 替代品」，同时也能管 Kubernetes。引擎可选 <code>moby</code>（就是 Docker 引擎）或 <code>containerd</code>，本机用的是 <code>moby</code>。</p>
+<h3 id="rancher-c2">2.2 架构：CLI → VM → dockerd</h3>
+<div class="vflow">
+<div class="layer blue"><div class="name">Windows 侧的 docker CLI</div><div class="desc">你在 Git Bash / PowerShell 敲的 <code>docker run</code>，只是客户端</div></div>
+<div class="link"></div>
+<div class="layer m2"><div class="name">命名管道 npipe:////./pipe/docker_engine</div><div class="desc">Windows 通过这条管道把命令送进 Linux</div></div>
+<div class="link"></div>
+<div class="layer m3"><div class="name">WSL2 里的 rancher-desktop 发行版</div><div class="desc">一台真正的 Linux，里面跑着 <code>dockerd</code>（真正干活的引擎）</div></div>
+<div class="link"></div>
+<div class="layer m4"><div class="name">容器</div><div class="desc">镜像在这里被拉取、创建、运行</div></div>
+</div>
+<p>看清楚这个链条：<strong>Windows 上的 <code>docker</code> 命令只是个「遥控器」，真正的引擎和容器都在 Linux VM 里</strong>。这也是为什么关掉 Rancher 的引擎，Windows 这边 <code>docker ps</code> 会直接报连接失败。</p>
+<h3 id="rancher-c3">2.3 配置与 CLI</h3>
+<pre><code><span class="cmt"># 图形界面：右键托盘图标 → Dashboard / Preferences</span>
+<span class="cmt">#   启停引擎、改 CPU/内存、换容器引擎，都在这里点</span>
+
+<span class="cmt"># 命令行控制（rdctl = Rancher Desktop ctl）</span>
+rdctl start            <span class="cmt"># 启动 Rancher 与引擎</span>
+rdctl shutdown         <span class="cmt"># 关闭引擎（保留配置）</span>
+rdctl list-settings    <span class="cmt"># 看当前设置</span>
+
+<span class="cmt"># 配置文件</span>
+<span class="str">%LOCALAPPDATA%\rancher-desktop\settings.json</span></code></pre>
+<p>自启动靠注册表 <code>HKCU\...\Run</code> 里的一个键，所以「开机后 Rancher 自己起来了」是它主动注册的行为，不是 Windows 内置的。</p>
+</section><section class="card" id="stack">
+<h2><span class="no">3</span>环境分层全貌 <span class="tag purple">全景</span></h2>
+<p class="ref">把前面几层摞起来看，一眼明白「你的容器到底跑在哪」</p>
+<h3 id="stack-c1">3.1 自下而上五层</h3>
+<div class="vflow">
+<div class="layer m1"><div class="name">① Windows 11 主机</div><div class="desc">你真正的物理机，跑着 Rancher 的界面和 docker CLI</div></div>
+<div class="link"></div>
+<div class="layer m2"><div class="name">② 虚拟化平台（Virtual Machine Platform / Hyper-V 组件）</div><div class="desc">Windows 自带的虚拟化能力，WSL2 建在这上面</div></div>
+<div class="link"></div>
+<div class="layer m3"><div class="name">③ WSL2：轻量 Linux VM</div><div class="desc">一个跑真 Linux 内核的瘦虚拟机，<code>rancher-desktop</code> 发行版住在这里</div></div>
+<div class="link"></div>
+<div class="layer m4"><div class="name">④ Docker 引擎 dockerd</div><div class="desc">在 WSL2 发行版里常驻，负责拉镜像、建容器</div></div>
+<div class="link"></div>
+<div class="layer orange"><div class="name">⑤ 你的容器</div><div class="desc">如 <code>hindsight</code>，最终住在这里</div></div>
+</div>
+<h3 id="stack-c2">3.2 一次 docker run 的旅程</h3>
+<ol>
+<li>你在 Windows 敲 <code>docker run ...</code>，<code>docker.exe</code> 把请求写进命名管道。</li>
+<li>管道另一头，WSL2 里的 <code>dockerd</code> 收到请求。</li>
+<li><code>dockerd</code> 检查本地有没有镜像，没有就去仓库拉。</li>
+<li><code>dockerd</code> 用镜像创建容器，在 Linux 内核上分配 namespace / cgroup。</li>
+<li>容器进程跑起来，<code>-p</code> 映射的端口通过 WSL2 的网络转发回 Windows。</li>
+</ol>
+<div class="callout amber">
+<div class="title">记住这一句</div>
+<p style="margin:0">你所有的容器，实际都跑在 <strong>WSL2 那个 Linux VM 里面</strong>。Windows 只是「发号施令」的地方。</p>
+</div>
+</section><section class="card" id="wsl2">
+<h2><span class="no">4</span>WSL2 是什么 <span class="tag blue">概念</span></h2>
+<p class="ref">Windows Subsystem for Linux 第二代——它不是一个「软件」，而是 Windows 内置的一整套「在 Windows 上跑 Linux」的能力</p>
+<h3 id="wsl2-c1">4.1 一句话本质</h3>
+<p class="lead"><strong>WSL2 让你在 Windows 里直接运行一个真正的 Linux（完整 Linux 内核 + 发行版），不用装双系统、不用手动开虚拟机软件。</strong> 你能在 Windows 里敲 <code>bash</code>、装 <code>apt</code> 包、跑 Linux 程序，就像在一台 Linux 机器上一样，而且文件、命令还能和 Windows 互通。</p>
+<h3 id="wsl2-c2">4.2 WSL1 vs WSL2</h3>
+<table>
+<tr><th>维度</th><th>WSL1</th><th>WSL2</th></tr>
+<tr><td>实现方式</td><td>把 Linux 系统调用<strong>翻译</strong>成 Windows 调用</td><td>真的<strong>跑一个 Linux 内核</strong>（在轻量 VM 里）</td></tr>
+<tr><td>兼容性</td><td>部分程序跑不了（如 Docker）</td><td>几乎完全兼容，Docker 能跑</td></tr>
+<tr><td>文件性能</td><td>访问 Windows 文件快</td><td>访问 Linux 侧文件快（跨系统访问慢）</td></tr>
+<tr><td>启动</td><td>秒级</td><td>需启动 VM，比 WSL1 稍慢（但已很快）</td></tr>
+</table>
+<p>你用的 Docker 必须走 WSL2，因为 WSL1 提供不了真内核的那些能力。</p>
+<h3 id="wsl2-c3">4.3 架构：服务与 VM</h3>
+<p>WSL2 由几块东西组成，最容易被忽略的是「服务」和「VM」的分工：</p>
+<div class="vflow">
+<div class="layer blue"><div class="name">wslservice.exe · WSLService</div><div class="desc">Windows 服务，<strong>开机自启</strong>（AUTO_START）——只负责「管理」，是控制平面</div></div>
+<div class="link"></div>
+<div class="layer m3"><div class="name">轻量 VM（vmmem 进程）</div><div class="desc"><strong>按需启动</strong>——真正跑 Linux 内核的地方，是数据平面</div></div>
+<div class="link"></div>
+<div class="layer m4"><div class="name">各发行版（Ubuntu / rancher-desktop / ...）</div><div class="desc">共享同一个 Linux 内核，各自隔离</div></div>
+</div>
+<div class="callout">
+<div class="title">关键：服务开机就跑，VM 是按需的</div>
+<p style="margin:0">开机后 <code>wslservice</code> 就在了（它要管理、随时待命）；但轻量 VM <strong>不会开机就占内存</strong>——直到你第一条 <code>wsl</code> 命令或 Docker 需要它时才被拉起来。这也解释了「平时看不到 vmmem 吃内存，一旦跑容器它才冒出来」。</p>
+</div>
+<h3 id="wsl2-c4">4.4 常用命令</h3>
+<pre><code>wsl -l -v                  <span class="cmt"># 列出所有发行版及状态/版本</span>
+wsl -d rancher-desktop     <span class="cmt"># 进入指定的发行版</span>
+wsl --shutdown             <span class="cmt"># 关掉整个 WSL2 子系统（所有发行版 + VM）</span>
+wsl --status               <span class="cmt"># 看默认发行版、内核版本</span></code></pre>
+<p>两个配置文件别搞混：</p>
+<ul>
+<li><strong><code>.wslconfig</code></strong>（Windows 用户目录下）：管<strong>整个 WSL2 虚拟机</strong>，比如分配多少内存、多少 CPU。</li>
+<li><strong><code>/etc/wsl.conf</code></strong>（发行版内部）：管<strong>某一个发行版</strong>的行为，比如是否启用 systemd。</li>
+</ul>
+</section><section class="card" id="wsl2-rancher">
+<h2><span class="no">5</span>WSL2 与 Rancher 的关系 <span class="tag purple">串联</span></h2>
+<p class="ref">Rancher 不是自己造轮子，而是「借用」WSL2 这台 Linux 机来跑 Docker</p>
+<h3 id="wsl2-rancher-c1">5.1 三个 WSL2 发行版</h3>
+<p>装了 Rancher Desktop 后，<code>wsl -l -v</code> 会看到它建的两个发行版（加上你自己可能的 Ubuntu）：</p>
+<table>
+<tr><th>发行版</th><th>作用</th></tr>
+<tr><td><code>rancher-desktop</code></td><td>跑 Docker/K8s 引擎的「工作机」，dockerd 在里面</td></tr>
+<tr><td><code>rancher-desktop-data</code></td><td>专门存镜像、容器数据，和引擎分离</td></tr>
+<tr><td>（你的）Ubuntu 等</td><td>你自己装来日常开发用的，和 Rancher 共用同一个 VM</td></tr>
+</table>
+<p>它们<strong>共享同一个 Linux 内核</strong>（WSL2 的设计），但 rootfs、进程、网络各自隔离——所以 Rancher 的引擎和你自己的 Ubuntu 互不干扰。</p>
+<h3 id="wsl2-rancher-c2">5.2 Windows 如何连上 VM 里的 dockerd</h3>
+<p>连法就是那条命名管道：</p>
+<pre><code><span class="cmt"># Windows 侧 docker CLI 连接的目标</span>
+npipe:////./pipe/docker_engine</code></pre>
+<p>Rancher 在 Windows 侧把这个管道「转发」到 <code>rancher-desktop</code> 发行版里的 dockerd。于是你敲 <code>docker ps</code>，请求走管道 → 进 Linux → dockerd 执行 → 结果原路返回。<strong>CLI 在 Windows，引擎在 Linux，两者靠管道握手。</strong></p>
+<div class="analogy">
+<div class="lbl">一句话总结这层关系</div>
+<p style="margin:6px 0 0">WSL2 提供「一台现成的 Linux 机」，Rancher 在这台机上「装了 Docker 引擎 + 架了根电话线（命名管道）通到 Windows」，你在 Windows 拿电话下单，Linux 那头的引擎真正干活。</p>
+</div>
+</section><section class="card" id="service">
+<h2><span class="no">6</span>关键辨析：WSL2 是「Windows 的服务」吗 <span class="tag amber">澄清</span></h2>
+<p class="ref">这是最容易形成的错误心智模型，值得单独掰清楚</p>
+<h3 id="service-c1">6.1 这个说法为什么不准确</h3>
+<p>你最初的直觉是：<em>「WSL2 的本质其实是 Windows 操作系统的一个服务。」</em> 这句话<strong>对了一半，但整体是错的</strong>——它只看到了「管家」，丢掉了「真正干活的人」。</p>
+<p>WSL2 其实是<strong>好几样东西的组合</strong>，至少包括：</p>
+<ul>
+<li><strong>一个 Windows 服务</strong> <code>wslservice.exe</code>——负责管理、协调，是「管家」；</li>
+<li><strong>一个真正的 Linux 内核</strong>——跑在轻量 VM 里，才是真正执行你命令的「干活的」；</li>
+<li><strong>虚拟化平台</strong>（Virtual Machine Platform / Hyper-V 相关组件）——提供跑那个 VM 的底座；</li>
+<li><strong>各发行版的用户态</strong>（Ubuntu、rancher-desktop 的文件系统、apt 等）。</li>
+</ul>
+<p>把 WSL2 等同于「一个服务」，就像把<strong>一家公司等同于它的前台</strong>——前台确实是公司的一部分，也确实是「开机就在」的那个，但真正产出价值的是后面的团队。</p>
+<h3 id="service-c2">6.2 控制平面 vs 数据平面</h3>
+<p>你熟悉 IC，用控制平面 / 数据平面来对齐最贴切：</p>
+<table>
+<tr><th></th><th>控制平面（管理）</th><th>数据平面（干活）</th></tr>
+<tr><td>WSL2 里对应</td><td><code>wslservice.exe</code> 服务</td><td>轻量 VM 里的 Linux 内核 + 各发行版</td></tr>
+<tr><td>IC 里对应</td><td>管理单元：配置寄存器、握手、调度</td><td>数据通路：真正搬数据的那条链</td></tr>
+<tr><td>是否开机就在</td><td>是（AUTO_START）</td><td>否（按需拉起）</td></tr>
+</table>
+<div class="analogy">
+<div class="lbl">类比</div>
+<p style="margin:6px 0 0"><strong>餐厅：</strong>前台/领班 = 服务，负责接待、安排座位、把单子传下去；真正做饭的厨房 = VM 里的 Linux 内核。说「这家餐厅就是前台」显然漏掉了整个厨房。</p>
+<p style="margin:6px 0 0"><strong>芯片：</strong>把「一块 SoC」等同于「它的一组配置寄存器」——寄存器确实开机就有、也确实是 SoC 的一部分，但 SoC 的主体是数据通路。服务之于 WSL2，就相当于配置寄存器之于 SoC。</p>
+</div>
+<h3 id="service-c3">6.3 修正后的心智模型</h3>
+<p>把最初的话修正成这样，就准确了：</p>
+<div class="callout green">
+<div class="title">修正版</div>
+<p style="margin:0">WSL2 是 Windows 内置的一整套「在 Windows 上跑真 Linux」的能力，由 <strong>一个常驻服务（控制平面）</strong> + <strong>一个按需启动的轻量 Linux VM（数据平面）</strong> + <strong>一组发行版</strong> 组成。那个服务负责管理和拉起 VM；真正执行命令、承载容器的，是 VM 里的 Linux 内核。</p>
+</div>
+<p>而 Rancher 与它的关系也顺势清晰了：<strong>Rancher 是「调用方」</strong>——它通过 WSL2 的服务，拉起（或接入）那台轻量 VM，在里面的 <code>rancher-desktop</code> 发行版上跑起 dockerd；Windows 侧的 docker CLI 则通过命名管道遥控这个 dockerd。<strong>服务在管、VM 在算、Rancher 在调度、CLI 在下单</strong>——四者各司其职，谁都不是谁的「本质」。</p>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>

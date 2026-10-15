@@ -77,5 +77,12 @@ const NOTES = [
     category: "AI Tools",
     url: "notes/2026-10-09-svcode-skill-seekers更新说明.html",
     desc: "自建工具 0.2.0→0.4.0 两层演进：第一层把 SV/UVM 源码解析成统一容器模型，第二层建立跨文件实例化/继承层次树与端口对齐，附三个诚实边界与 skill 大小量级评估"
+  },
+  {
+    title: "Docker · WSL2 · Rancher Desktop · 入门",
+    date: "2026-10-15",
+    category: "计算机概念",
+    url: "notes/2026-10-15-docker-wsl2-rancher入门.html",
+    desc: "从容器是什么讲到 Windows 跑 Docker 的完整链路：镜像/容器/仓库、Rancher Desktop 架构、WSL2 的服务与 VM 分工，以及控制平面/数据平面辨析"
   }
 ];
