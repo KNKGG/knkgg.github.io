@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>fsdb2fst 离线安装 · 让 wave-mcp 吃上 FSDB</title><style>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>wave-mcp 从安装到 debug · fsdb2fst 离线安装与使用</title><style>
 :root {
   --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
   --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
@@ -207,9 +207,12 @@ li { margin: 0.3rem 0; }
 <li><a class="lvl1" href="#topo">2. 机器拓扑与方案</a><ul></ul></li>
 <li><a class="lvl1" href="#steps">3. 完整安装流程（7 步）</a><ul></ul></li>
 <li><a class="lvl1" href="#pitfalls">4. 常见坑速查</a><ul></ul></li>
+<li><a class="lvl1" href="#usage">5. 建 session（wave-session）</a><ul></ul></li>
+<li><a class="lvl1" href="#mcp">6. Claude Code 配置 MCP</a><ul></ul></li>
+<li><a class="lvl1" href="#debug">7. Debug 提示词</a><ul></ul></li>
 </ul></nav></aside><main class="content"><header class="hero">
-<h1>fsdb2fst 离线安装</h1>
-<div class="sub">让 wave-mcp 吃上 FSDB——不靠 pip/git 更新，在有 Verdi 的隔离机上把 fsdb2fst 编出来</div>
+<h1>wave-mcp 从安装到 debug</h1>
+<div class="sub">fsdb2fst 离线安装 → 建 session → Claude Code 配置 MCP → 波形 debug 提示词</div>
 <div class="meta">
   来源：<code>Tencent/wave-mcp</code> · <code>docs/FSDB_GUIDE.md</code> · <code>deploy/build_fsdb2fst.sh</code> ·
   信息截至 <code>2026-10-22</code>
@@ -295,6 +298,61 @@ bash deploy/build_fsdb2fst.sh</code></pre>
 <div class="analogy">
 <div class="lbl">一句话定位</div>
 <p style="margin:6px 0 0">报错信息是<strong>设计好用来定位的</strong>——先看 <code>Why not built automatically:</code> 那一行，再对号入座；别一上来就重装，多数情况是「源码 / 库 / g++ / env」四选一缺了。</p>
+</div>
+</section><section class="card" id="usage">
+<h2><span class="no">5</span>建 session（wave-session） <span class="tag green">使用</span></h2>
+<p class="ref">用 <code>wave-session</code> 直接建 session，产物给 agent 读</p>
+<h3>静态 session（可选，先摸结构，无波形）</h3>
+<pre><code>wave-session --static --filelist rtl.f --top top_tb --out sessions/my_mod_static</code></pre>
+<h3>动态 session（拿到 fsdb 后，自动转 fst）</h3>
+<pre><code>export FSDB2FST_BIN=/tmp/third_party/fsdb2fst/fsdb2fst   # 转 fsdb 才需要
+wave-session --vcd dump.fsdb --filelist rtl.f --top top_tb --out sessions/my_mod</code></pre>
+<ul>
+<li><code>--vcd</code> 同时吃 <code>.vcd</code> 和 <code>.fsdb</code>（内部自动转 fst）；已手动转好 fst 用 <code>--fst dump.fst</code>。</li>
+<li><code>--filelist</code> 是仿真用的同一个 <code>.f</code>（自动解析 <code>+incdir+/+define+/-y</code>）。</li>
+<li>产物 = <code>--out</code> 里的 <code>session.json</code>（绑定 <code>fst_path</code> + <code>maps_path</code> + <code>filelist</code>）。</li>
+<li><strong>静态/动态 <code>--out</code> 要分开</strong>：动态构建会重建 netlist，同一 <code>--out</code> 会覆盖静态产物。</li>
+<li><code>FSDB2FST_BIN</code> 只需在建 session 的 shell 里 export，不必进 MCP 配置。</li>
+</ul>
+</section><section class="card" id="mcp">
+<h2><span class="no">6</span>Claude Code 配置 MCP <span class="tag blue">配置</span></h2>
+<p class="ref">wave-mcp 是 stdio server，必须与 Claude Code 同机、能访问 session 目录</p>
+<h3>方式一：配置文件</h3>
+<pre><code>{
+  "mcpServers": {
+    "wave-mcp": { "command": "/shared/wave-mcp/bin/wave-mcp" }
+  }
+}</code></pre>
+<h3>方式二：命令行</h3>
+<pre><code>claude mcp add wave-mcp -- /shared/wave-mcp/bin/wave-mcp
+claude mcp list   # 验证已注册</code></pre>
+<div class="callout green">
+<div class="title">env 要不要</div>
+<p class="lead" style="margin:0">自己建好 session（含转 fst）、agent 只读产物 → 不需要；要 agent 现场 <code>prepare_session</code> 转 <code>.fsdb</code> → 加 <code>FSDB2FST_BIN</code>/<code>VERDI_HOME</code>。</p>
+</div>
+</section><section class="card" id="debug">
+<h2><span class="no">7</span>Debug 提示词 <span class="tag amber">实操</span></h2>
+<p class="ref">session 已打开，或在提示词里带产物路径；agent 自动映射到工具</p>
+<table>
+<thead><tr><th>场景</th><th>提示词</th><th>工具</th></tr></thead>
+<tbody>
+<tr><td>开场</td><td>打开 <code>sessions/my_mod</code> 这个 session</td><td><code>open_session</code></td></tr>
+<tr><td>结构</td><td>列出所有模块，及 <code>tb_top.u_dut</code> 下 2 层实例树</td><td><code>list_modules</code> / <code>find_instances</code> / <code>scope_info</code> / <code>list_signals</code></td></tr>
+<tr><td>值查询</td><td><code>data_out[7:0]</code> 在 1200–1500ns 的值变化</td><td><code>signal_values</code> / <code>signal_activity</code></td></tr>
+<tr><td>X 追踪</td><td><code>state</code> 何时变 X？把 X 来源和 fan-in 追出来</td><td><code>trace_x</code> / <code>signal_fanin</code> / <code>active_drivers</code></td></tr>
+<tr><td>驱动</td><td><code>wr_en</code> 有哪些驱动源？5000ns 谁是 active driver</td><td><code>active_drivers</code> / <code>driver_contributors</code> / <code>signal_drivers</code></td></tr>
+<tr><td>Fan-in/out</td><td><code>data_out</code> 的 fan-in（深度 3），fan-out 接到哪</td><td><code>signal_fanin</code> / <code>signal_loads</code> / <code>signal_downstream</code></td></tr>
+<tr><td>采样</td><td>在 <code>clk</code> 上升沿采样 <code>data[31:0]</code>，2000–4000ns</td><td><code>sample_at_clock</code></td></tr>
+<tr><td>FSM</td><td>分析 <code>state</code> 状态跳转，复位后到 2 万 ns</td><td><code>fsm_transitions</code></td></tr>
+<tr><td>事务</td><td>把 <code>req</code>↑ 到 <code>ack</code>↓ 折叠成事务，统计耗时</td><td><code>fold_transactions</code></td></tr>
+<tr><td>diff</td><td>对比 <code>pass.fst</code> / <code>fail.fst</code>，找第一个分歧点</td><td><code>diff_waveforms</code></td></tr>
+<tr><td>可视化</td><td>在 viewer 打开 <code>dump.fst</code>，聚焦 <code>state</code></td><td><code>open_wave_view</code></td></tr>
+<tr><td>收窄</td><td>只转 <code>u_dut.u_ctrl</code> 子树</td><td><code>prepare_session</code> 的 <code>scopes</code></td></tr>
+</tbody>
+</table>
+<div class="callout amber">
+<div class="title">组合套路（X-debug 闭环）</div>
+<p class="lead" style="margin:0">打开 session 后，先告诉我 <code>state</code> 变 X 的时刻；追出那一刻的 active drivers 和 fan-in；把 X 来源链画出来，定位哪个 upstream 先出问题。agent 会串 <code>signal_activity</code> → <code>trace_x</code> → <code>active_drivers</code> → <code>signal_fanin</code>。</p>
 </div>
 </section></main><script>
 (function () {

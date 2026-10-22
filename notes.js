@@ -93,10 +93,10 @@ const NOTES = [
     desc: "给硬件工程师的软件地层说明书：三把尺子定位角色，操作系统/库/框架/工具/服务五角色，加微码/固件/驱动/运行时/Hypervisor/中间件/协议等扩展角色，并以 Python 全链路实战串讲"
   },
   {
-    title: "fsdb2fst 离线安装 · 让 wave-mcp 吃上 FSDB",
+    title: "wave-mcp 从安装到 debug · fsdb2fst 离线安装与使用",
     date: "2026-10-22",
     category: "AI Tools",
     url: "notes/2026-10-22-fsdb2fst离线安装.html",
-    desc: "wave-mcp 报「找不到 fsdb2fst」的根因与离线部署：在无网但有 Verdi 的隔离机上编出 fsdb2fst 的 7 步流程与踩坑"
+    desc: "fsdb2fst 离线安装 → wave-session 建 session → Claude Code 配置 MCP → 波形 debug 提示词全流程"
   }
 ];
