@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>fsdb2fst 离线安装 · 让 wave-mcp 吃上 FSDB</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3, h4 {
+  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
+  scroll-margin-top: 1.5rem;
+}
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.7rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.92rem; color: var(--ink); font-weight: 600; line-height: 1.5; }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.25rem; line-height: 1.55; }
+.layer .desc code, .layer .name code { color: var(--accent); }
+
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout.red    { border-left-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul>
+<li><a class="lvl1" href="#why">1. 背景：为什么要单独装</a><ul></ul></li>
+<li><a class="lvl1" href="#topo">2. 机器拓扑与方案</a><ul></ul></li>
+<li><a class="lvl1" href="#steps">3. 完整安装流程（7 步）</a><ul></ul></li>
+<li><a class="lvl1" href="#pitfalls">4. 常见坑速查</a><ul></ul></li>
+</ul></nav></aside><main class="content"><header class="hero">
+<h1>fsdb2fst 离线安装</h1>
+<div class="sub">让 wave-mcp 吃上 FSDB——不靠 pip/git 更新，在有 Verdi 的隔离机上把 fsdb2fst 编出来</div>
+<div class="meta">
+  来源：<code>Tencent/wave-mcp</code> · <code>docs/FSDB_GUIDE.md</code> · <code>deploy/build_fsdb2fst.sh</code> ·
+  信息截至 <code>2026-10-22</code>
+</div>
+</header><section class="card" id="why">
+<h2><span class="no">1</span>背景：为什么要单独装 <span class="tag blue">原理</span></h2>
+<p class="ref">先搞清 fsdb2fst 是什么、为什么它不在 wave-mcp 的包里</p>
+<p>wave-mcp 原生用 <code>fsdb2fst</code> 做 <strong>FSDB → FST 直转</strong>。相比「fsdb → vcd → fst」的中转路线，直转不损失 <code>real</code> 信号的精度、时间刻度原样透传，且省掉 VCD 文本的体积爆炸。</p>
+<p>但它<strong>不是随仓库 / PyPI 分发的东西</strong>，原因有二：</p>
+<ul>
+<li>编译时必须 link Verdi 的 proprietary 库 <code>libnffr.so</code> + <code>libnsys.so</code>，这两库<strong>永不进仓库 / 包</strong>，只能本地链接。</li>
+<li>所以它是个「本地产物」，在<strong>有 Verdi 库的 Linux 机器上按需编译</strong>，产物进用户缓存目录。</li>
+</ul>
+<div class="callout amber">
+<div class="title">「找不到 fsdb2fst」的典型根因</div>
+<p class="lead" style="margin:0">老 pip 包（&lt; 0.2.6）连<strong>源码都没打进去</strong>（<code>share/wave-mcp/fsdb2fst/</code> 缺失），自动编译无料可编，于是报 <code>converter sources are not shipped in the PyPI package</code>。这套流程在不重装的前提下手动补齐。</p>
+</div>
+<p>wave-mcp 查找 <code>fsdb2fst</code> 的顺序：<code>$FSDB2FST_BIN</code> → 仓库本地 → 用户缓存 → <code>PATH</code> → 按需自动编译。只要把 <code>$FSDB2FST_BIN</code> 指向编好的二进制，就能绕过后面所有环节。</p>
+</section><section class="card" id="topo">
+<h2><span class="no">2</span>机器拓扑与方案 <span class="tag green">选型</span></h2>
+<p class="ref">三台机器的能力不同，方案要顺着「谁有 Verdi、谁能上网」走</p>
+<table>
+<thead><tr><th>机器</th><th>有网</th><th>有 Verdi</th><th>g++</th><th>角色</th></tr></thead>
+<tbody>
+<tr><td>Mac（操作机）</td><td>✅</td><td>❌</td><td>—</td><td>指挥 / 中转</td></tr>
+<tr><td>联网机</td><td>✅</td><td>❌</td><td>—</td><td><strong>下载源码、打包</strong></td></tr>
+<tr><td>隔离机</td><td>❌</td><td>✅</td><td>9.5.0</td><td><strong>编译 + 运行</strong></td></tr>
+</tbody>
+</table>
+<div class="callout green">
+<div class="title">关键决策：在隔离机本地编，而不是联网机编好拷二进制</div>
+<p class="lead" style="margin:0">联网机没 Verdi 编不了；即便从隔离机把库拷过去编，也会踩 <strong>glibc 版本</strong>坑（新 glibc 编的二进制在旧机器上 <code>GLIBC_xx not found</code>）。隔离机本地编：Verdi 本地有、glibc / 架构天然匹配、拷的只是 113K 源码包。</p>
+</div>
+</section><section class="card" id="steps">
+<h2><span class="no">3</span>完整安装流程（7 步） <span class="tag amber">实操</span></h2>
+<p class="ref">第 1 步在联网机，第 2–7 步在隔离机</p>
+
+<h3>① 联网机：下载并打包源码</h3>
+<pre><code>curl -fL https://github.com/Tencent/wave-mcp/archive/refs/heads/main.tar.gz -o /tmp/wave-mcp.tar.gz
+tar xzf /tmp/wave-mcp.tar.gz -C /tmp
+cd /tmp/wave-mcp-main
+tar czf /tmp/fsdb2fst-src.tar.gz third_party/fsdb2fst deploy/build_fsdb2fst.sh</code></pre>
+<p>验证（缺一不可，约 113K）：</p>
+<pre><code>ls -lh /tmp/fsdb2fst-src.tar.gz
+tar tzf /tmp/fsdb2fst-src.tar.gz | grep -E 'fsdb2fst.cpp$|build_fsdb2fst.sh$|fstapi.c$'</code></pre>
+
+<h3>② 传输到隔离机</h3>
+<pre><code>scp /tmp/fsdb2fst-src.tar.gz &lt;隔离机主机名&gt;:/tmp/</code></pre>
+
+<h3>③ 隔离机：前置核对</h3>
+<pre><code>which g++ &amp;&amp; g++ --version | head -1        # 需 ≥ 7（C++17）
+ls -d "$VERDI_HOME/share/FsdbReader/linux64/libnffr.so"</code></pre>
+<p>若环境变量不叫 <code>VERDI_HOME</code>（公司自定义），改设 <code>FSDB2FST_FREADER=/path/to/FsdbReader</code>，效果相同。库解析顺序：<code>FSDB2FST_FREADER</code> → <code>VERDI_HOME</code> → <code>NOVAS_HOME</code>。</p>
+
+<h3>④ 隔离机：编译</h3>
+<pre><code>cd /tmp &amp;&amp; tar xzf fsdb2fst-src.tar.gz
+export VERDI_HOME=/path/to/你的verdi
+bash deploy/build_fsdb2fst.sh</code></pre>
+<p>产物 <code>/tmp/third_party/fsdb2fst/fsdb2fst</code>，RPATH 已指向本地 Verdi 库路径，运行时零额外处理。</p>
+
+<h3>⑤ 隔离机：冒烟验证</h3>
+<pre><code>/tmp/third_party/fsdb2fst/fsdb2fst --info 你的.fsdb 2&gt;&amp;1 | head</code></pre>
+
+<h3>⑥ MCP 配置</h3>
+<pre><code>"env": { "FSDB2FST_BIN": "/tmp/third_party/fsdb2fst/fsdb2fst" }</code></pre>
+<p><code>$FSDB2FST_BIN</code> 是第一优先命中，指过去后既不依赖自动编译、也不依赖隔离机有没有源码。</p>
+
+<h3>⑦ 端到端验证</h3>
+<p>重启 MCP，再跑一次 <code>prepare_session</code> 喂 <code>.fsdb</code>。「找不到 fsdb2fst」应消失，转出 <code>.fst</code> + <code>.fst.hier</code>（<strong>两文件成对</strong>，缺 <code>.hier</code> 打不开）。</p>
+</section><section class="card" id="pitfalls">
+<h2><span class="no">4</span>常见坑速查 <span class="tag red">踩坑</span></h2>
+<p class="ref">报错信息里有一行 <code>Why not built automatically:</code>，它会精确告诉你卡在哪一步</p>
+<table>
+<thead><tr><th>症状</th><th>原因</th><th>解法</th></tr></thead>
+<tbody>
+<tr><td><code>sources are not shipped in the PyPI package</code></td><td>pip 包 &lt; 0.2.6 缺源码</td><td>本流程手动补源码</td></tr>
+<tr><td>g++ 4.8 报一堆语法错</td><td>老 CentOS 7 默认 gcc，不支持 C++17</td><td>devtoolset-9 或换 g++ ≥ 7</td></tr>
+<tr><td><code>libnffr.so: cannot open shared object</code></td><td>运行时找不到库</td><td>在隔离机本地编（RPATH 指向本地）；否则两个 <code>.so</code> 放二进制同目录</td></tr>
+<tr><td>「no Verdi FsdbReader runtime」</td><td>MCP 进程里没 <code>VERDI_HOME</code></td><td>MCP 配置 env 里显式加 <code>VERDI_HOME</code>（或直接 <code>FSDB2FST_BIN</code> 绕过）</td></tr>
+<tr><td><code>--info</code> 无输出 / 报错</td><td>fsdb 损坏或路径错</td><td>先确认 fsdb 能被 Verdi 正常打开</td></tr>
+</tbody>
+</table>
+<div class="analogy">
+<div class="lbl">一句话定位</div>
+<p style="margin:6px 0 0">报错信息是<strong>设计好用来定位的</strong>——先看 <code>Why not built automatically:</code> 那一行，再对号入座；别一上来就重装，多数情况是「源码 / 库 / g++ / env」四选一缺了。</p>
+</div>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>
