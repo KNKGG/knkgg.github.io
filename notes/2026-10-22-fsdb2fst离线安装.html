@@ -210,6 +210,7 @@ li { margin: 0.3rem 0; }
 <li><a class="lvl1" href="#usage">5. 建 session（wave-session）</a><ul></ul></li>
 <li><a class="lvl1" href="#mcp">6. Claude Code 配置 MCP</a><ul></ul></li>
 <li><a class="lvl1" href="#debug">7. Debug 提示词</a><ul></ul></li>
+<li><a class="lvl1" href="#bsub">8. bsub 部署 &amp; MCP 集成踩坑</a><ul></ul></li>
 </ul></nav></aside><main class="content"><header class="hero">
 <h1>wave-mcp 从安装到 debug</h1>
 <div class="sub">fsdb2fst 离线安装 → 建 session → Claude Code 配置 MCP → 波形 debug 提示词</div>
@@ -353,6 +354,37 @@ claude mcp list   # 验证已注册</code></pre>
 <div class="callout amber">
 <div class="title">组合套路（X-debug 闭环）</div>
 <p class="lead" style="margin:0">打开 session 后，先告诉我 <code>state</code> 变 X 的时刻；追出那一刻的 active drivers 和 fan-in；把 X 来源链画出来，定位哪个 upstream 先出问题。agent 会串 <code>signal_activity</code> → <code>trace_x</code> → <code>active_drivers</code> → <code>signal_fanin</code>。</p>
+</div>
+</section><section class="card" id="bsub">
+<h2><span class="no">8</span>bsub 部署 &amp; MCP 集成踩坑 <span class="tag red">踩坑</span></h2>
+<p class="ref">隔离机无外网，wave-mcp 装在 bsub 计算节点本地盘，Claude Code 只能 <code>bsub</code> 进去用；以下坑都来自这条链路</p>
+<table>
+<thead><tr><th>症状</th><th>原因</th><th>解法</th></tr></thead>
+<tbody>
+<tr><td>找不到 <code>wave-session</code> / <code>wave-mcp</code> 可执行文件</td><td>在 <code>runtime/bin/</code> 不在 <code>bin/</code></td><td>用 <code>&lt;部署目录&gt;/runtime/bin/…</code>，别用 <code>bin/</code> 下那个</td></tr>
+<tr><td>MCP 连上后 JSON 解析乱掉</td><td><code>bsub -I</code> 的 <code>Job &lt;id&gt; is submitted</code> 横幅打在 stdout，污染 JSON-RPC</td><td>管道加 <code>grep --line-buffered '^{'</code>，只留 <code>{</code> 开头的 JSON 行</td></tr>
+<tr><td>wave-mcp 起不来、Python import 报错</td><td>bsub 环境的 <code>PYTHONPATH</code> 抢掉自带 runtime Python</td><td>先 <code>unset PYTHONPATH</code>（csh 用 <code>unsetenv</code>）</td></tr>
+<tr><td>静态 session 报找不到 <code>FSDB2FST_BIN</code></td><td>静态 session 纯 netlist，不转 fsdb</td><td>静态不加该 env；只有 <code>--vcd</code> 转 fsdb 才需要</td></tr>
+<tr><td><code>claude mcp list</code> 报 <code>no MCP servers configured</code></td><td>2.1.145 对 project scope 的 <code>.mcp.json</code> 不显示（issue #5963）</td><td>用 <code>claude mcp get &lt;name&gt;</code> 验证；会话内 <code>/mcp</code> 正常</td></tr>
+<tr><td>配了 <code>.mcp.json</code> 不生效</td><td>没放在 Claude Code 启动时的 cwd</td><td>project 级 <code>.mcp.json</code> 必须放在 cwd 目录</td></tr>
+<tr><td>提示词让 agent 打开 session 失败</td><td>喂的是 fsdb/fst 文件，或 <code>--out</code> 写在内网机 home</td><td>喂 <code>--out</code> 目录（含 <code>session.json</code>），且必须写在计算节点本地盘</td></tr>
+</tbody>
+</table>
+<div class="callout amber">
+<div class="title">能跑通的 MCP 配置（project 级 .mcp.json）</div>
+<p class="lead" style="margin:0">登录机 shell 是 csh，MCP 用 <code>bash -c</code> 包 <code>bsub</code>，再用 grep 过滤横幅：</p>
+<pre style="margin:0.7rem 0 0"><code>{
+  "mcpServers": {
+    "wave-mcp": {
+      "command": "bash",
+      "args": ["-c", "bsub -q centos8 -Is 'unset PYTHONPATH; &lt;部署目录&gt;/runtime/bin/wave-mcp' | grep --line-buffered '^{'"]
+    }
+  }
+}</code></pre>
+</div>
+<div class="callout green">
+<div class="title">开场提示词：吃的是 --out 目录</div>
+<p class="lead" style="margin:0"><code>open_session</code> 的入参是 <code>wave-session --out</code> 那个目录（里面有 <code>session.json</code>，已绑好 fst + maps + filelist），不是 fsdb/fst 文件。所以开场说「打开 <code>/xxx/&lt;out_dir&gt;</code> 这个 session」，后面按第 7 节表换信号名问即可。</p>
 </div>
 </section></main><script>
 (function () {
