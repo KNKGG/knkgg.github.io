@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>skeptic 统合 CLI 设计蓝图</title><style>
+:root {
+  --font-zh: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC";
+  --font-en: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue";
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --ink: #23204a;
+  --ink-soft: #4a4770;
+  --ink-mute: #8a86a8;
+  --paper: #f7f2e4;
+  --paper-soft: #efe8d6;
+  --card: #fbf6e8;
+  --rule: #e6ddc8;
+  --rule-strong: #d3c8ad;
+
+  --accent: #1E3A8A;      /* 藏青 */
+  --accent-2: #E8682A;    /* 珊瑚橙 */
+  --accent-3: #E9A23B;    /* 琥珀 */
+  --green: #2f9e6e;
+  --red: #d64550;
+  --purple: #8b5cf6;
+
+  --code-bg: #f5f1e7;
+  --code-ink: #2b2845;
+
+  --sidebar-w: 300px;
+  --content-w: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+@media (min-width: 1200px) { html { font-size: 17px; } }
+body {
+  margin: 0;
+  font-family: var(--font-en), var(--font-zh), sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--paper-soft);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  padding: 2.2rem 1.2rem 3rem 1.6rem;
+  z-index: 10;
+}
+.sidebar-brand {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  padding: 0 0.4rem; margin-bottom: 1rem;
+}
+#toc ul { list-style: none; padding: 0; margin: 0; }
+#toc > ul > li { margin: 0.15rem 0; }
+#toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 0.28rem 0.55rem; border-radius: 6px; line-height: 1.45;
+  transition: background 100ms, color 100ms;
+}
+#toc a:hover { background: color-mix(in oklab, var(--accent), transparent 90%); color: var(--accent); }
+#toc a.active {
+  color: var(--accent); background: color-mix(in oklab, var(--accent), transparent 86%);
+  font-weight: 600;
+}
+#toc .lvl1 { font-size: 0.9rem; color: var(--ink); }
+#toc .lvl2 { font-size: 0.82rem; padding-left: 1.4rem; color: var(--ink-soft); }
+
+.content {
+  margin-left: var(--sidebar-w);
+  max-width: var(--content-w);
+  padding: 3.5rem clamp(20px, 4vw, 52px) 7rem;
+}
+
+header.hero {
+  margin-bottom: 3rem; padding-bottom: 1.5rem;
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  background-repeat: no-repeat; background-position: bottom left; background-size: 100% 3px;
+}
+header.hero h1 {
+  font-family: var(--font-zh); font-weight: 600;
+  font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.25;
+  margin: 0 0 0.5rem; color: var(--accent); letter-spacing: 0.01em;
+}
+header.hero .sub { color: var(--ink-soft); font-size: 1.02rem; margin: 0 0 1rem; }
+header.hero .meta { margin-top: 0.8rem; font-size: 0.8rem; color: var(--ink-mute); line-height: 1.7; }
+header.hero .meta code, .ref code {
+  color: var(--accent); background: var(--paper-soft);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em;
+}
+
+section.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+  padding: 2rem 2.2rem; margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(35,32,74,.05), 0 8px 28px rgba(79,70,229,.05);
+  scroll-margin-top: 1.5rem;
+}
+section.card h2 {
+  margin: 0 0 0.4rem; font-family: var(--font-zh); font-weight: 600;
+  font-size: 1.45rem; line-height: 1.35; color: var(--ink);
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+}
+section.card h2 .no {
+  background: linear-gradient(135deg, #162a5e, #1E3A8A); color: #fff;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 0.55rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; flex: none; font-family: var(--font-en); font-weight: 600;
+  padding: 0 0.35rem;
+}
+section.card .ref { color: var(--ink-mute); font-size: 0.85rem; margin: 0 0 1rem; }
+
+h3, h4 {
+  font-family: var(--font-zh); font-weight: 600; color: var(--ink);
+  scroll-margin-top: 1.5rem;
+}
+h3 {
+  font-size: 1.12rem; margin: 1.9rem 0 0.6rem;
+  padding-left: 0.6rem; border-left: 3px solid var(--accent-3);
+}
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; color: var(--ink-soft); }
+
+p { margin: 0 0 1rem; }
+.lead { color: #4a4770; }
+strong, b { font-weight: 600; color: var(--ink); }
+
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 11px; border-radius: 20px; margin-left: 0.4rem;
+  vertical-align: middle; letter-spacing: 0.02em;
+}
+.tag.amber  { background: rgba(217,154,43,.14); color: #a86f10; border: 1px solid rgba(217,154,43,.4); }
+.tag.red    { background: rgba(214,69,80,.12); color: #bc3946; border: 1px solid rgba(214,69,80,.35); }
+.tag.green  { background: rgba(47,158,110,.12); color: #1f7a52; border: 1px solid rgba(47,158,110,.35); }
+.tag.purple { background: rgba(139,92,246,.12); color: #7c3aed; border: 1px solid rgba(139,92,246,.35); }
+.tag.blue   { background: rgba(30,58,138,.12); color: #1E3A8A; border: 1px solid rgba(30,58,138,.35); }
+
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: color-mix(in oklab, var(--accent), transparent 90%);
+  color: var(--ink); padding: 0.1em 0.4em; border-radius: 4px;
+}
+pre {
+  margin: 1.1rem 0; padding: 1rem 1.2rem;
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+  overflow-x: auto; line-height: 1.6; font-size: 0.86rem; color: var(--code-ink);
+  font-family: var(--font-mono);
+}
+pre code { background: transparent; padding: 0; color: inherit; }
+
+.layer {
+  border: 1.5px solid var(--rule-strong); border-radius: 10px;
+  padding: 0.7rem 1rem; background: var(--card); text-align: center;
+}
+.layer .name { font-size: 0.92rem; color: var(--ink); font-weight: 600; line-height: 1.5; }
+.layer .desc { color: var(--ink-mute); font-size: 0.82rem; margin-top: 0.25rem; line-height: 1.55; }
+.layer .desc code, .layer .name code { color: var(--accent); }
+
+table { width: 100%; margin: 1.3rem 0; border-collapse: collapse; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+thead { background: color-mix(in oklab, var(--accent-2), transparent 90%); }
+th {
+  border-top: 2px solid var(--accent-2); border-bottom: 1px solid var(--accent-2);
+  text-align: left; padding: 0.55rem 0.8rem; font-weight: 600;
+  font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-2);
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.55rem 0.8rem; vertical-align: top; color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 2px solid var(--accent-2); }
+td code, th code { color: var(--accent); }
+
+.callout {
+  border-left: 4px solid var(--accent);
+  background: color-mix(in oklab, var(--accent), transparent 94%);
+  padding: 0.9rem 1.2rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0;
+}
+.callout.green  { border-left-color: var(--green); background: color-mix(in oklab, var(--green), transparent 94%); }
+.callout.amber  { border-left-color: var(--accent-3); background: color-mix(in oklab, var(--accent-3), transparent 94%); }
+.callout.red    { border-left-color: var(--red); background: color-mix(in oklab, var(--red), transparent 95%); }
+.callout .title { font-weight: 600; color: var(--ink); margin-bottom: 0.3rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+.analogy {
+  border: 1px dashed var(--accent-3);
+  background: color-mix(in oklab, var(--accent-3), transparent 95%);
+  border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+}
+.analogy .lbl { font-size: 0.78rem; color: #a86f10; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.analogy p { margin: 0.4rem 0; color: var(--ink-soft); }
+.analogy p:last-child { margin-bottom: 0; }
+
+ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; }
+ul li::marker { color: var(--accent-3); }
+ol li::marker { color: var(--accent-3); font-weight: 600; }
+li { margin: 0.3rem 0; }
+
+@media (max-width: 768px) {
+  .sidebar { position: static; width: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.4rem 1.2rem; }
+  .content { margin-left: 0; padding: 2rem 1.2rem 5rem; }
+}
+
+::selection { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--ink); }
+</style></head><body><aside class="sidebar"><div class="sidebar-brand">目录</div><nav id="toc"><ul>
+<li><a class="lvl1" href="#pipeline">1. 背景：四阶段 debug 管线</a><ul></ul></li>
+<li><a class="lvl1" href="#overview">2. 命令总览：六个子命令</a><ul></ul></li>
+<li><a class="lvl1" href="#spec">3. 各命令详细规格</a><ul></ul></li>
+<li><a class="lvl1" href="#mech">4. 三个关键机制</a><ul></ul></li>
+<li><a class="lvl1" href="#dirs">5. 目录结构</a><ul></ul></li>
+<li><a class="lvl1" href="#roadmap">6. 落地顺序与待定</a><ul></ul></li>
+</ul></nav></aside><main class="content"><header class="hero">
+<h1>skeptic 统合 CLI 设计蓝图</h1>
+<div class="sub">把 RTL 回归 debug 管线做成多子命令 CLI（flatten / static / build / dynamic / debug / diagnose）</div>
+<div class="meta">
+  来源：<code>wave-session</code> · <code>wave-mcp --session</code> · <code>flatten_fl.py</code> ·
+  信息截至 <code>2026-10-23</code>
+</div>
+</header><section class="card" id="pipeline">
+<h2><span class="no">1</span>背景：四阶段 debug 管线 <span class="tag blue">背景</span></h2>
+<p class="ref">先看清每天实际在做的四段重复劳动，才知道 CLI 该长什么样</p>
+<p>回归 debug 的日常是一条固定流水线，串起设计工程师、验证工程师和 AI 三方：</p>
+<table>
+<thead><tr><th>阶段</th><th>谁做</th><th>产出</th></tr></thead>
+<tbody>
+<tr><td>① DUT 更新</td><td>设计工程师</td><td>新一版 RTL</td></tr>
+<tr><td>② 静态 session 更新</td><td>验证工程师</td><td>版本化静态 session（纯结构，无波形）</td></tr>
+<tr><td>③ 回归用例</td><td>回归工具</td><td>一批 case 目录，fail 的每个都有 fsdb</td></tr>
+<tr><td>④ fail case debug</td><td>验证工程师 + AI</td><td>逐 case 建动态 session，进各自目录调 agent</td></tr>
+</tbody>
+</table>
+<div class="callout amber">
+<div class="title">这一步一步全是手工敲</div>
+<p class="lead" style="margin:0">每个环节都要手动拼 <code>wave-session</code> 命令、手动写 <code>.mcp.json</code>、手动 <code>claude</code> 起会话；尤其第 ④ 段，fail 一个就要重复一遍。CLI 的目标是把「静态 session 只建一次、动态 session 复用结构、每个 case 一键进 debug」这三件事固化下来。</p>
+</div>
+<p>静态 session 要作为<strong>副本保留、随 DUT 版本化</strong>（每次 DUT 更新重建一份，历史不覆盖），这样任意 fail case 都能回指到对应版本的结构基线。这是整套设计的锚点。</p>
+</section><section class="card" id="overview">
+<h2><span class="no">2</span>命令总览：六个子命令 <span class="tag green">总览</span></h2>
+<p class="ref">主命令 <code>skeptic</code>，Python 3 + <code>argparse</code> subparsers，无第三方依赖，离线可用</p>
+<p>跑在内网登录机，内部 <code>bsub -q centos8 -Is 'unset PYTHONPATH; …'</code> 派发到计算节点。六个子命令一条依赖链：</p>
+<pre><code>skeptic
+├── flatten     套壳：调同目录 flatten_fl.py
+├── static      扁平 filelist + top → 版本化静态 session
+├── build       = flatten + static
+├── dynamic     单 case 产动态 session（时序增量）
+├── debug       单 case 产 .mcp.json（预置 --session）+ 启动 claude
+└── diagnose    = dynamic + debug</code></pre>
+<table>
+<thead><tr><th>命令</th><th>做什么</th><th>输入</th><th>输出</th></tr></thead>
+<tbody>
+<tr><td><code>flatten</code></td><td>套壳 <code>flatten_fl.py</code></td><td>多个非扁平 filelist</td><td>一个扁平 <code>.f</code></td></tr>
+<tr><td><code>static</code></td><td>版本化静态 session</td><td>扁平 <code>.f</code> + top</td><td><code>session.json</code> + <code>netlist/maps.json</code></td></tr>
+<tr><td><code>build</code></td><td>flatten + static 二合一</td><td>非扁平 <code>.f</code> + top</td><td><code>flat.f</code> + 静态 session</td></tr>
+<tr><td><code>dynamic</code></td><td>单 case 动态 session（时序增量）</td><td>case 波形 + 静态 session</td><td><code>case/session</code></td></tr>
+<tr><td><code>debug</code></td><td>产 <code>.mcp.json</code> + 起 claude</td><td>case 目录</td><td><code>.mcp.json</code></td></tr>
+<tr><td><code>diagnose</code></td><td>dynamic + debug 二合一</td><td>case + 静态 session</td><td>直接进 claude</td></tr>
+</tbody>
+</table>
+<div class="callout green">
+<div class="title">日常只碰两条</div>
+<p class="lead" style="margin:0">DUT 更新后跑一次 <code>build</code> 准备结构；每个 fail case 跑一次 <code>diagnose</code> 直达 claude。</p>
+<pre style="margin:0.7rem 0 0"><code># DUT 更新后，准备结构（跑一次）
+skeptic build --filelist xxx.f --top top_tb --static-root /path/static --dut-version 1.2.3
+
+# 每个 fail case，一键进 claude debug
+skeptic diagnose --case /abs/path/case01 --static-session /path/static/1.2.3 --filelist /path/static/1.2.3/flat.f --top top_tb</code></pre>
+</div>
+</section><section class="card" id="spec">
+<h2><span class="no">3</span>各命令详细规格 <span class="tag amber">规格</span></h2>
+<p class="ref">签名 + 伪代码 + 一个关键点；按依赖链从上到下排</p>
+
+<h3>flatten · 套壳</h3>
+<pre><code>skeptic flatten -o &lt;out.f&gt; &lt;filelist1&gt; [filelist2 ...]</code></pre>
+<p>参数与 <code>flatten_fl.py</code> 保持一致：<code>-o</code> 输出 + 位置参数多个输入。</p>
+<pre><code>def cmd_flatten(args):
+    script = os.path.join(os.path.dirname(__file__), "flatten_fl.py")
+    subprocess.run(["python3", script, "-o", args.out] + args.filelists, check=True)</code></pre>
+<p>关键点：<code>flatten_fl.py</code> 与本脚本同目录，用 <code>__file__</code> 定位；<code>check=True</code> 让 flatten 失败时 skeptic 一并报错退出。</p>
+
+<h3>static · 版本化静态 session</h3>
+<pre><code>skeptic static --filelist &lt;扁平.f&gt; --top &lt;top&gt; --static-root &lt;dir&gt; --dut-version &lt;ver&gt;</code></pre>
+<pre><code>out = f"{args.static_root}/{args.dut_version}"
+bsub(f"wave-session --static --filelist {args.filelist} --top {args.top} --out {out}")</code></pre>
+<p>产物：<code>&lt;static-root&gt;/&lt;dut-version&gt;/session.json</code> + <code>netlist/maps.json</code>，历史全留（版本化，不覆盖）。</p>
+
+<h3>build · = flatten + static</h3>
+<pre><code>skeptic build --filelist &lt;非扁平.f&gt; [更多...] --top &lt;top&gt; --static-root &lt;dir&gt; --dut-version &lt;ver&gt;</code></pre>
+<pre><code>flat = f"{args.static_root}/{args.dut_version}/flat.f"   # 扁平产物跟静态 session 放一起，保留
+flatten(flat, args.filelists)                            # flatten_fl.py -o flat.f xxx.f ...
+static(filelist=flat, top=args.top, out=f"{args.static_root}/{args.dut_version}")</code></pre>
+<p>关键点：<code>flat.f</code> 落在静态 session 目录内，后续 dynamic/diagnose 直接引用它，不用重跑 flatten。</p>
+
+<h3>dynamic · 单 case，时序增量</h3>
+<pre><code>skeptic dynamic --case &lt;case绝对路径&gt; --static-session &lt;静态session目录绝对路径&gt; --filelist &lt;flat.f&gt; --top &lt;top&gt;</code></pre>
+<pre><code>wave = find_waveform(args.case)                 # 优先 *.fsdb，否则 *.fst；都无则报错
+out  = f"{args.case}/session"
+bsub(f"wave-session --vcd {wave} --filelist {args.filelist} "
+     f"--top {args.top} --out {out} --no-netlist")       # --no-netlist 跳过重复解析 RTL
+rewrite_maps(f"{out}/session.json", f"{args.static_session}/netlist/maps.json")</code></pre>
+<pre><code>def rewrite_maps(session_json, static_maps):
+    m = json.load(open(session_json))
+    m["maps_path"] = static_maps                 # null → 静态 maps.json 绝对路径
+    json.dump(m, open(session_json, "w"), indent=2)</code></pre>
+<p>关键点：结构复用静态（maps 指回静态），只增量加时序（波形 fst）。</p>
+
+<h3>debug · 单 case，预置 session</h3>
+<pre><code>skeptic debug --case &lt;case绝对路径&gt;</code></pre>
+<pre><code>session = f"{args.case}/session"
+mcp = {"mcpServers": {"wave-mcp": {
+    "command": "bash",
+    "args": ["-c",
+        f"bsub -q centos8 -Is 'unset PYTHONPATH; "
+        f"&lt;部署目录&gt;/runtime/bin/wave-mcp --session {session}' "
+        f"| grep --line-buffered '^{{'"]}}}
+json.dump(mcp, open(f"{args.case}/.mcp.json", "w"), indent=2)
+os.chdir(args.case)
+os.execvp("claude", ["claude"])                  # 接管终端，开始对话</code></pre>
+<p>关键点：<code>.mcp.json</code> 里 wave-mcp 带 <code>--session</code>（官方语义 <code>auto-open at startup</code>），claude 一启动 session 就绪，用户直接问波形。</p>
+
+<h3>diagnose · = dynamic + debug</h3>
+<pre><code>skeptic diagnose --case &lt;case绝对路径&gt; --static-session &lt;静态session目录&gt; --filelist &lt;flat.f&gt; --top &lt;top&gt;</code></pre>
+<p>内部先跑 dynamic 逻辑，再跑 debug 逻辑，一条命令从 case 波形直达进 claude。</p>
+</section><section class="card" id="mech">
+<h2><span class="no">4</span>三个关键机制 <span class="tag purple">机制</span></h2>
+<p class="ref">三个机制是整套设计的骨架，缺一个就退回手工</p>
+<table>
+<thead><tr><th>机制</th><th>作用</th><th>落在哪条命令</th></tr></thead>
+<tbody>
+<tr><td><strong>复用 netlist</strong></td><td>静态建 1 次结构，所有动态 session 共用 <code>maps.json</code>，避免每 case 重解析 RTL</td><td><code>dynamic</code> 的 <code>--no-netlist</code> + 改 <code>maps_path</code></td></tr>
+<tr><td><strong><code>--session</code> 预置</strong></td><td>生成的 <code>.mcp.json</code> 给 wave-mcp 传 <code>--session</code>，省掉手动 <code>open_session</code></td><td><code>debug</code> / <code>diagnose</code></td></tr>
+<tr><td><strong>bsub 派发 + 横幅过滤</strong></td><td>所有 wave-session/wave-mcp 都套 <code>bsub</code>；MCP 侧加 <code>grep</code> 滤掉 <code>Job &lt;id&gt; is submitted</code> 横幅</td><td>全部命令</td></tr>
+</tbody>
+</table>
+<div class="analogy">
+<div class="lbl">为什么先复用 netlist，再谈并行</div>
+<p style="margin:6px 0 0">并行只是把「每个 case 各建一次」同时做，省的是墙钟时间；而 netlist 复用省的是<strong>每 case 重复解析 RTL 的算力</strong>，这是更大的浪费。所以先固化结构复用，多 case 并行放到最后再定。</p>
+</div>
+</section><section class="card" id="dirs">
+<h2><span class="no">5</span>目录结构 <span class="tag green">结构</span></h2>
+<p class="ref">静态与动态分家：静态侧版本化快照，动态侧逐 case 自洽</p>
+<pre><code>static-root/
+  &lt;dut-version&gt;/
+    flat.f              # build 时 flatten 产物，保留供 dynamic 复用
+    session.json
+    netlist/maps.json   # 唯一结构基线
+
+cases-root/
+  case01/
+    case01.fsdb         # 波形名不固定，自动发现
+    session/            # dynamic 生成
+      session.json      #   fst_path=转出fst, maps_path→静态 maps.json
+    .mcp.json           # debug 生成（预置 --session）</code></pre>
+<p>静态侧每次 DUT 更新加一个 <code>&lt;dut-version&gt;</code> 目录，历史只增不减；动态侧每个 case 目录自包含（波形 + 自己的 session + 自己的 <code>.mcp.json</code>），互不干扰。</p>
+</section><section class="card" id="roadmap">
+<h2><span class="no">6</span>落地顺序与待定 <span class="tag red">待定</span></h2>
+<p class="ref">按依赖先易后难推进，两个风险点先小范围验证</p>
+<h3>落地顺序</h3>
+<ol>
+<li><code>flatten</code>（套壳，独立，被 static/build 依赖）</li>
+<li><code>static</code> + <code>build</code></li>
+<li><code>dynamic</code>（先验证「maps 跨目录复用」风险点）</li>
+<li><code>debug</code>（验证 <code>--session</code> 预置）</li>
+<li><code>diagnose</code> 合成</li>
+<li>多 case 并行——后续再定</li>
+</ol>
+<h3>待定项</h3>
+<ul>
+<li><strong>脚本载体 / 拓扑</strong>：Python + 登录机 bsub 派发为建议，实现时可改 bash/csh 或放计算节点</li>
+<li><strong>多 case 并行机制</strong>：先跑通单 case，并行另议</li>
+<li><strong>两个待验证风险点</strong>：maps 跨目录复用、<code>--session</code> 预置（都在落地顺序 3/4 里先验证）</li>
+</ul>
+</section></main><script>
+(function () {
+  var links = document.querySelectorAll('#toc a[href^="#"]');
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var targets = [];
+  document.querySelectorAll('[id]').forEach(function (el) {
+    if (el.tagName === 'SECTION' || el.tagName === 'H3' || el.tagName === 'H4') {
+      var a = map[el.id];
+      if (a) targets.push({ el: el, a: a });
+    }
+  });
+  if (!targets.length) return;
+  function clearActive() { links.forEach(function (l) { l.classList.remove('active'); }); }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      clearActive();
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-12% 0px -76% 0px', threshold: 0 });
+  targets.forEach(function (t) { obs.observe(t.el); });
+})();
+</script></body></html>

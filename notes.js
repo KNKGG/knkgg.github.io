@@ -98,5 +98,12 @@ const NOTES = [
     category: "AI Tools",
     url: "notes/2026-10-22-fsdb2fst离线安装.html",
     desc: "fsdb2fst 离线安装 → wave-session 建 session → Claude Code 配置 MCP → 波形 debug 提示词全流程"
+  },
+  {
+    title: "skeptic 统合 CLI 设计蓝图",
+    date: "2026-10-23",
+    category: "AI Tools",
+    url: "notes/2026-10-23-skeptic统合CLI设计蓝图.html",
+    desc: "把 RTL 回归 debug 管线做成多子命令 CLI（flatten/static/build/dynamic/debug/diagnose）的设计蓝图"
   }
 ];
