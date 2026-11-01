@@ -105,5 +105,12 @@ const NOTES = [
     category: "AI Tools",
     url: "notes/2026-10-23-skeptic统合CLI设计蓝图.html",
     desc: "把 RTL 回归 debug 管线做成多子命令 CLI（flatten/static/build/dynamic/debug/diagnose）的设计蓝图"
+  },
+  {
+    title: "AI 控制 QQ 跑团（TRPG）机器人 · 从选型到部署到开团",
+    date: "2026-11-01",
+    category: "Game",
+    url: "notes/2026-11-01-AI控制QQ跑团TRPG机器人.html",
+    desc: "NapCat + DiceFrame + 本地 Qwen 三层架构，AI 当 GM/KP 在 QQ 群里跑团：技术选型、部署踩坑、使用指南与启动脚本"
   }
 ];
